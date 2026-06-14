@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Match, Participant, Prediction } from '../../shared/types';
 import { api, getParticipantAuth, setParticipantAuth } from '../api';
-import { colombiaTodayKey, formatDayLabel, groupByDay } from '../format';
+import { formatDayLabel, groupByDay } from '../format';
 import { PredictionRow } from '../components/PredictionRow';
 
 interface Props {
@@ -61,11 +61,12 @@ export function PredictionsView({ isAdmin, participantId, onSelectParticipant }:
     }
   };
 
-  const days = groupByDay(matches);
-  const today = colombiaTodayKey();
-  const pastDays = days.filter((group) => group.day < today);
-  const currentDays = days.filter((group) => group.day >= today);
-  const pastMatchCount = pastDays.reduce((sum, group) => sum + group.items.length, 0);
+  // Por defecto solo se ven los partidos que aún NO empezaron (predecibles).
+  // Los que ya arrancaron o terminaron van en el colapsable de "pasados".
+  const currentDays = groupByDay(matches.filter((m) => m.status === 'pendiente'));
+  const pastMatches = matches.filter((m) => m.status !== 'pendiente');
+  const pastDays = groupByDay(pastMatches);
+  const pastMatchCount = pastMatches.length;
 
   const renderDay = (group: { day: string; items: Match[] }) => (
     <section key={group.day} className="card day-card">

@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { api } from '../api';
-import { colombiaTodayKey, formatDayLabel, groupByDay } from '../format';
+import { formatDayLabel, groupByDay } from '../format';
 import { MatchAdminRow } from '../components/MatchAdminRow';
 
 export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number) => void; isAdmin: boolean }) {
@@ -43,11 +43,12 @@ export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number
   };
 
   const filtered = stageFilter === 'todos' ? matches : matches.filter((m) => m.stage === stageFilter);
-  const days = groupByDay(filtered);
-  const today = colombiaTodayKey();
-  const pastDays = days.filter((group) => group.day < today);
-  const currentDays = days.filter((group) => group.day >= today);
-  const pastMatchCount = pastDays.reduce((sum, group) => sum + group.items.length, 0);
+  // Por defecto se ven los próximos y los que están en juego (para registrar resultado);
+  // solo los ya finalizados van al colapsable de "pasados".
+  const currentDays = groupByDay(filtered.filter((m) => m.status !== 'finalizado'));
+  const pastMatches = filtered.filter((m) => m.status === 'finalizado');
+  const pastDays = groupByDay(pastMatches);
+  const pastMatchCount = pastMatches.length;
 
   const renderDay = (group: { day: string; items: Match[] }) => (
     <section key={group.day} className="card day-card">

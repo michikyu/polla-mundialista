@@ -71,6 +71,12 @@ async function init(): Promise<void> {
       PRIMARY KEY (match_id, kind)
     )
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS settings (
+      key TEXT PRIMARY KEY,
+      value TEXT
+    )
+  `);
   await migrate();
   await seedIfEmpty();
 }

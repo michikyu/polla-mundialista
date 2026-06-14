@@ -103,6 +103,10 @@ export const api = {
 
   getStandings: () => request<StandingRow[]>('/api/standings'),
 
+  getSettings: () => request<{ title: string | null }>('/api/settings'),
+  updateSettings: (title: string) =>
+    request<{ title: string }>('/api/settings', { method: 'PUT', body: JSON.stringify({ title }) }),
+
   syncResults: () =>
     request<{ checked: number; updated: number; created: number; unmatched: string[] }>('/api/sync-results', {
       method: 'POST',

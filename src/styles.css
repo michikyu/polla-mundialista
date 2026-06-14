@@ -74,6 +74,19 @@ body {
   transition: transform 0.15s ease;
 }
 
+.title-edit {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.85rem;
+  padding: 0.15rem;
+  opacity: 0.55;
+}
+
+.title-edit:hover {
+  opacity: 1;
+}
+
 .header-clock {
   display: flex;
   justify-content: center;
@@ -622,6 +635,15 @@ select:focus {
   font-size: 8px;
   font-weight: 700;
   fill: var(--muted);
+}
+
+/* Cuando todos ya predijeron: anillo verde. */
+.ring.complete .ring-fill {
+  stroke: var(--success);
+}
+
+.ring.complete .ring-text {
+  fill: var(--success);
 }
 
 /* Botón ícono (lápiz) */

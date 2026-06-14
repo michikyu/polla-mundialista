@@ -8,7 +8,7 @@ const CONFETTI = ['🎉', '🏆', '🇨🇴', '⭐', '🎊', '🥅', '🔥', '�
 
 // Pantalla de entrada estilo "zumbido de MSN": el balón entra rebotando,
 // el título golpea con rebote elástico y cae confeti; luego todo se desvanece.
-export function SplashScreen({ onDone }: { onDone: () => void }) {
+export function SplashScreen({ title, onDone }: { title: string; onDone: () => void }) {
   useEffect(() => {
     playSplashSound();
     const timer = setTimeout(onDone, SPLASH_DURATION_MS);
@@ -32,11 +32,7 @@ export function SplashScreen({ onDone }: { onDone: () => void }) {
       <div className="splash-ball">
         <BallIcon size={96} />
       </div>
-      <h1 className="splash-title">
-        Polla Mundialística
-        <br />
-        Moachos
-      </h1>
+      <h1 className="splash-title">{title}</h1>
       <p className="splash-sub">🏆 ¡Que gane el mejor! 🏆</p>
     </div>
   );

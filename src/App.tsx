@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react';
 import { api, clearStoredPassword, setStoredPassword } from './api';
+import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
 import { SplashScreen } from './components/SplashScreen';
@@ -40,11 +41,28 @@ export function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showRules, setShowRules] = useState(false);
+  const [title, setTitle] = useState(APP_TITLE);
   const [colombiaTime, setColombiaTime] = useState(getColombiaTime);
   const [participantId, setParticipantId] = useState<number | null>(() => {
     const saved = Number(localStorage.getItem(PARTICIPANT_KEY));
     return Number.isInteger(saved) && saved > 0 ? saved : null;
   });
+
+  useEffect(() => {
+    document.title = title;
+  }, [title]);
+
+  // El título guardado por el admin (en la base) tiene prioridad sobre el de por defecto.
+  useEffect(() => {
+    api
+      .getSettings()
+      .then((s) => {
+        if (s.title) {
+          setTitle(s.title);
+        }
+      })
+      .catch(() => {});
+  }, []);
 
   useEffect(() => {
     api
@@ -64,6 +82,19 @@ export function App() {
     }, msToNextMinute);
     return () => clearTimeout(timeout);
   }, []);
+
+  const handleEditTitle = async () => {
+    const next = window.prompt('Nuevo título de la polla:', title);
+    if (!next || !next.trim() || next.trim() === title) {
+      return;
+    }
+    try {
+      const result = await api.updateSettings(next.trim());
+      setTitle(result.title);
+    } catch (err) {
+      window.alert((err as Error).message);
+    }
+  };
 
   const openMatch = (id: number) => {
     setBackView(view);
@@ -110,7 +141,7 @@ export function App() {
 
   return (
     <div className="app">
-      {showSplash && <SplashScreen onDone={() => setShowSplash(false)} />}
+      {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
       {showRules && <RulesModal onClose={() => setShowRules(false)} />}
       <header className="app-header">
         <div className="header-top">
@@ -123,8 +154,18 @@ export function App() {
             >
               <BallIcon />
             </button>
-            Polla Mundialística Moachos
+            {title}
           </h1>
+          {isAdmin && (
+            <button
+              className="title-edit"
+              onClick={() => void handleEditTitle()}
+              title="Cambiar el título de la polla"
+              aria-label="Cambiar el título"
+            >
+              ✏️
+            </button>
+          )}
         </div>
         <div className="header-clock">
           <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
