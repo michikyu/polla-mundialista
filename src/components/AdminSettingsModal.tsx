@@ -5,8 +5,8 @@ import type { ScoringConfig } from '../../shared/scoring';
 
 const GAME_ENABLED = import.meta.env.VITE_ENABLE_GAME === 'true';
 
-// Reduce la imagen a máx. 512px y la devuelve como data URL PNG (payload liviano).
-function fileToScaledDataUrl(file: File, max = 512): Promise<string> {
+// Reduce la imagen a máx. 256px y la comprime a WebP: queda en pocos KB.
+function fileToScaledDataUrl(file: File, max = 256): Promise<string> {
   return new Promise((resolve, reject) => {
     const reader = new FileReader();
     reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
@@ -26,7 +26,9 @@ function fileToScaledDataUrl(file: File, max = 512): Promise<string> {
           return;
         }
         ctx.drawImage(img, 0, 0, w, h);
-        resolve(canvas.toDataURL('image/png'));
+        // WebP si el navegador lo soporta; si no, PNG.
+        const webp = canvas.toDataURL('image/webp', 0.8);
+        resolve(webp.startsWith('data:image/webp') ? webp : canvas.toDataURL('image/png'));
       };
       img.src = reader.result as string;
     };

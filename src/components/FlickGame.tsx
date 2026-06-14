@@ -2,20 +2,44 @@ import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 
 // El campo es lógico (360x540) y se escala al ancho disponible. Todo lo aleatorio
-// sale de una semilla FIJA: así los blancos aparecen en los mismos lugares, con la
-// misma velocidad y el mismo ritmo para todos → el puntaje es justo (solo cambia tu pulso).
+// sale de una semilla FIJA: el blanco aparece en los mismos lugares, con la misma
+// velocidad y el mismo ritmo para todos → el puntaje es justo (solo cambia tu pulso).
 const W = 360;
 const H = 540;
 const GRAVITY = 1150; // px/s²
 const BALL_HOME = { x: 180, y: 500 };
 const BALL_R = 18;
 const SEED = 1337;
-const MAX_TARGETS = 3;
 
-// Zona interior del arco donde viven los blancos.
+// Zona interior del arco donde vive el blanco.
 const GOAL = { x0: 34, x1: W - 34, y0: 30, y1: 218 };
-const SPEED_NORMAL = 42; // px/s
-const SPEED_GOLD = 105; // el dorado se mueve más rápido
+const SPEED_BASE = 55; // px/s (sube con el puntaje)
+const R_BASE = 34;
+const R_MIN = 18;
+
+// Mismo balón que el título (BallIcon, balón Trionda) para dibujarlo en el canvas.
+const BALL_SVG =
+  '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100">' +
+  '<defs><clipPath id="bc"><circle cx="50" cy="50" r="47"/></clipPath></defs>' +
+  '<circle cx="50" cy="50" r="47" fill="#ffffff"/>' +
+  '<g clip-path="url(#bc)">' +
+  '<g><path d="M50 4 C 63 4, 75 12, 78 26 C 70 37, 59 42, 50 40 C 41 42, 30 37, 22 26 C 25 12, 37 4, 50 4 Z" fill="#1c7ed6"/>' +
+  '<path d="M33 12 C 43 8, 57 8, 67 12" stroke="#1255a3" stroke-width="2.4" fill="none"/>' +
+  '<path d="M27 20 C 40 14, 60 14, 73 20" stroke="#1255a3" stroke-width="2.4" fill="none"/>' +
+  '<rect x="46.6" y="26" width="6.8" height="6.8" fill="#ffffff" transform="rotate(45 50 29.4)"/></g>' +
+  '<g transform="rotate(120 50 50)"><path d="M50 4 C 63 4, 75 12, 78 26 C 70 37, 59 42, 50 40 C 41 42, 30 37, 22 26 C 25 12, 37 4, 50 4 Z" fill="#d6336c"/>' +
+  '<path d="M33 12 C 43 8, 57 8, 67 12" stroke="#9c1c43" stroke-width="2.4" fill="none"/>' +
+  '<path d="M27 20 C 40 14, 60 14, 73 20" stroke="#9c1c43" stroke-width="2.4" fill="none"/></g>' +
+  '<g transform="rotate(240 50 50)"><path d="M50 4 C 63 4, 75 12, 78 26 C 70 37, 59 42, 50 40 C 41 42, 30 37, 22 26 C 25 12, 37 4, 50 4 Z" fill="#2f9e44"/>' +
+  '<path d="M33 12 C 43 8, 57 8, 67 12" stroke="#1d6b2e" stroke-width="2.4" fill="none"/>' +
+  '<path d="M27 20 C 40 14, 60 14, 73 20" stroke="#1d6b2e" stroke-width="2.4" fill="none"/></g>' +
+  '<g stroke="#16265c" stroke-width="4.5" fill="none" stroke-linecap="round">' +
+  '<path d="M79 25 C 90 40, 90 58, 78 70"/>' +
+  '<path d="M79 25 C 90 40, 90 58, 78 70" transform="rotate(120 50 50)"/>' +
+  '<path d="M79 25 C 90 40, 90 58, 78 70" transform="rotate(240 50 50)"/></g>' +
+  '</g><circle cx="50" cy="50" r="47" fill="none" stroke="#334155" stroke-width="2.5"/></svg>';
+
+type Phase = 'start' | 'playing' | 'over';
 
 interface HighScore {
   participant_id: number;
@@ -57,12 +81,18 @@ export function FlickGame({
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const audioRef = useRef<AudioContext | null>(null);
   const effectsRef = useRef(true);
+  const phaseRef = useRef<Phase>('start');
+  const [phase, setPhaseState] = useState<Phase>('start');
   const [score, setScore] = useState(0);
   const [misses, setMisses] = useState(0);
-  const [over, setOver] = useState(false);
   const [effectsOn, setEffectsOn] = useState(true);
   const [runId, setRunId] = useState(0);
   const [highscores, setHighscores] = useState<HighScore[]>([]);
+
+  const setPhase = (p: Phase) => {
+    phaseRef.current = p;
+    setPhaseState(p);
+  };
 
   useEffect(() => {
     api.getHighscores().then(setHighscores).catch(() => {});
@@ -70,7 +100,7 @@ export function FlickGame({
 
   // Al terminar: guarda tu puntaje (si entraste como participante) y refresca la tabla.
   useEffect(() => {
-    if (!over) {
+    if (phase !== 'over') {
       return;
     }
     let cancelled = false;
@@ -80,7 +110,7 @@ export function FlickGame({
           await api.submitGameScore(participantId, score);
         }
       } catch {
-        // Sin conexión, etc.; no rompe el juego.
+        // Sin conexión, etc.
       }
       try {
         const hs = await api.getHighscores();
@@ -94,7 +124,7 @@ export function FlickGame({
     return () => {
       cancelled = true;
     };
-  }, [over, score, participantId]);
+  }, [phase, score, participantId]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -112,7 +142,41 @@ export function FlickGame({
     ctx.imageSmoothingEnabled = true;
     ctx.imageSmoothingQuality = 'high';
 
-    // Imágenes desde la API (las gestiona el admin). Se cargan async; se asignan al dibujar.
+    const ballImg = new Image();
+    ballImg.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(BALL_SVG);
+
+    const drawField = () => {
+      const grd = ctx.createLinearGradient(0, 0, 0, H);
+      grd.addColorStop(0, '#3aa757');
+      grd.addColorStop(1, '#2f9e44');
+      ctx.fillStyle = grd;
+      ctx.fillRect(0, 0, W, H);
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = 4;
+      ctx.strokeRect(28, 24, W - 56, 200);
+      ctx.globalAlpha = 0.18;
+      ctx.lineWidth = 1;
+      for (let x = 40; x < W - 40; x += 14) {
+        ctx.beginPath();
+        ctx.moveTo(x, 26);
+        ctx.lineTo(x, 222);
+        ctx.stroke();
+      }
+      for (let y = 38; y < 222; y += 14) {
+        ctx.beginPath();
+        ctx.moveTo(30, y);
+        ctx.lineTo(W - 30, y);
+        ctx.stroke();
+      }
+      ctx.globalAlpha = 1;
+    };
+
+    // En la pantalla de inicio / fin solo se ve el campo quieto.
+    if (phaseRef.current !== 'playing') {
+      drawField();
+      return;
+    }
+
     const images: HTMLImageElement[] = [];
     api
       .getStickers()
@@ -130,7 +194,7 @@ export function FlickGame({
 
     const game = {
       ball: { x: BALL_HOME.x, y: BALL_HOME.y, vx: 0, vy: 0, flying: false },
-      targets: [] as Target[],
+      target: null as Target | null,
       score: 0,
       misses: 0,
       over: false,
@@ -140,15 +204,19 @@ export function FlickGame({
       time: 0,
     };
 
+    // La dificultad sube con el puntaje: el blanco es más pequeño y más rápido.
     const spawn = (): Target => {
-      const golden = game.spawnCount % 6 === 5; // 1 de cada 6 es dorado (determinista)
+      const golden = game.spawnCount % 6 === 5; // 1 de cada 6 es dorado
       game.spawnCount += 1;
-      const r = golden ? 27 : 32;
+      const lvl = Math.floor(game.score / 8); // un nivel cada 8 puntos
+      const baseSpeed = SPEED_BASE * Math.min(2.6, 1 + 0.1 * lvl);
+      const baseR = Math.max(R_MIN, R_BASE - 1.4 * lvl);
+      const speed = golden ? baseSpeed * 1.6 : baseSpeed;
+      const r = golden ? Math.max(R_MIN - 2, baseR * 0.85) : baseR;
       const x = rr(GOAL.x0 + r, GOAL.x1 - r);
       const y = rr(GOAL.y0 + r, GOAL.y1 - r);
       const ang = rng() * Math.PI * 2;
-      const speed = golden ? SPEED_GOLD : SPEED_NORMAL;
-      const imgIdx = Math.floor(rng() * 1000); // se mapea con % al dibujar
+      const imgIdx = Math.floor(rng() * 1000);
       return {
         x,
         y,
@@ -160,9 +228,7 @@ export function FlickGame({
         imgIdx,
       };
     };
-    while (game.targets.length < MAX_TARGETS) {
-      game.targets.push(spawn());
-    }
+    game.target = spawn();
 
     const resetBall = () => {
       game.ball = { x: BALL_HOME.x, y: BALL_HOME.y, vx: 0, vy: 0, flying: false };
@@ -213,36 +279,23 @@ export function FlickGame({
       soundMiss();
       if (game.misses >= 3) {
         game.over = true;
-        setOver(true);
+        setPhase('over');
       }
     };
 
     // --- Dibujo -------------------------------------------------------------
     const drawBall = (cx: number, cy: number, R: number) => {
-      ctx.save();
-      ctx.beginPath();
-      ctx.arc(cx, cy, R, 0, Math.PI * 2);
-      ctx.fillStyle = '#ffffff';
-      ctx.fill();
-      ctx.lineWidth = 2;
-      ctx.strokeStyle = '#1f2937';
-      ctx.stroke();
-      // Pentágono central (toque de balón, sin emoji).
-      ctx.fillStyle = '#1f2937';
-      ctx.beginPath();
-      for (let i = 0; i < 5; i++) {
-        const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
-        const px = cx + Math.cos(a) * R * 0.34;
-        const py = cy + Math.sin(a) * R * 0.34;
-        if (i === 0) {
-          ctx.moveTo(px, py);
-        } else {
-          ctx.lineTo(px, py);
-        }
+      if (ballImg.complete && ballImg.naturalWidth > 0) {
+        ctx.drawImage(ballImg, cx - R, cy - R, R * 2, R * 2);
+      } else {
+        ctx.beginPath();
+        ctx.arc(cx, cy, R, 0, Math.PI * 2);
+        ctx.fillStyle = '#ffffff';
+        ctx.fill();
+        ctx.lineWidth = 2;
+        ctx.strokeStyle = '#1f2937';
+        ctx.stroke();
       }
-      ctx.closePath();
-      ctx.fill();
-      ctx.restore();
     };
 
     const drawTarget = (t: Target) => {
@@ -264,7 +317,6 @@ export function FlickGame({
         const d = r * 2;
         ctx.drawImage(img, t.x - r, t.y - r, d, d);
       } else {
-        // Sin imagen aún: círculo simple (nunca emoji).
         ctx.beginPath();
         ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
         ctx.fillStyle = t.golden ? '#ffd43b' : '#e9ecef';
@@ -273,37 +325,10 @@ export function FlickGame({
     };
 
     const draw = () => {
-      const grd = ctx.createLinearGradient(0, 0, 0, H);
-      grd.addColorStop(0, '#3aa757');
-      grd.addColorStop(1, '#2f9e44');
-      ctx.fillStyle = grd;
-      ctx.fillRect(0, 0, W, H);
-
-      // Arco + red
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = 4;
-      ctx.strokeRect(28, 24, W - 56, 200);
-      ctx.globalAlpha = 0.18;
-      ctx.lineWidth = 1;
-      for (let x = 40; x < W - 40; x += 14) {
-        ctx.beginPath();
-        ctx.moveTo(x, 26);
-        ctx.lineTo(x, 222);
-        ctx.stroke();
+      drawField();
+      if (game.target) {
+        drawTarget(game.target);
       }
-      for (let y = 38; y < 222; y += 14) {
-        ctx.beginPath();
-        ctx.moveTo(30, y);
-        ctx.lineTo(W - 30, y);
-        ctx.stroke();
-      }
-      ctx.globalAlpha = 1;
-
-      for (const t of game.targets) {
-        drawTarget(t);
-      }
-
-      // Vista previa del tiro (trayectoria real con gravedad).
       if (game.drag) {
         const dx = game.drag.cx - game.drag.sx;
         const dy = game.drag.cy - game.drag.sy;
@@ -328,7 +353,6 @@ export function FlickGame({
           }
         }
       }
-
       drawBall(game.ball.x, game.ball.y, BALL_R);
     };
 
@@ -338,25 +362,23 @@ export function FlickGame({
       game.last = t;
       game.time += dt;
 
-      if (!game.over) {
-        // Mover los blancos (suave) y rebotar dentro del arco.
-        for (const tg of game.targets) {
-          tg.x += tg.vx * dt;
-          tg.y += tg.vy * dt;
-          if (tg.x < GOAL.x0 + tg.r) {
-            tg.x = GOAL.x0 + tg.r;
-            tg.vx = Math.abs(tg.vx);
-          } else if (tg.x > GOAL.x1 - tg.r) {
-            tg.x = GOAL.x1 - tg.r;
-            tg.vx = -Math.abs(tg.vx);
-          }
-          if (tg.y < GOAL.y0 + tg.r) {
-            tg.y = GOAL.y0 + tg.r;
-            tg.vy = Math.abs(tg.vy);
-          } else if (tg.y > GOAL.y1 - tg.r) {
-            tg.y = GOAL.y1 - tg.r;
-            tg.vy = -Math.abs(tg.vy);
-          }
+      if (!game.over && game.target) {
+        const tg = game.target;
+        tg.x += tg.vx * dt;
+        tg.y += tg.vy * dt;
+        if (tg.x < GOAL.x0 + tg.r) {
+          tg.x = GOAL.x0 + tg.r;
+          tg.vx = Math.abs(tg.vx);
+        } else if (tg.x > GOAL.x1 - tg.r) {
+          tg.x = GOAL.x1 - tg.r;
+          tg.vx = -Math.abs(tg.vx);
+        }
+        if (tg.y < GOAL.y0 + tg.r) {
+          tg.y = GOAL.y0 + tg.r;
+          tg.vy = Math.abs(tg.vy);
+        } else if (tg.y > GOAL.y1 - tg.r) {
+          tg.y = GOAL.y1 - tg.r;
+          tg.vy = -Math.abs(tg.vy);
         }
 
         if (game.ball.flying) {
@@ -364,24 +386,19 @@ export function FlickGame({
           game.ball.x += game.ball.vx * dt;
           game.ball.y += game.ball.vy * dt;
 
-          for (let i = game.targets.length - 1; i >= 0; i--) {
-            const tg = game.targets[i];
-            const dx = tg.x - game.ball.x;
-            const dy = tg.y - game.ball.y;
-            if (dx * dx + dy * dy < (tg.r + BALL_R) * (tg.r + BALL_R)) {
-              game.score += tg.points;
-              setScore(game.score);
-              soundHit(tg.golden);
-              game.targets.splice(i, 1);
-              game.targets.push(spawn());
-              resetBall();
-              break;
-            }
-          }
-
-          if (
-            game.ball.flying &&
-            (game.ball.y < -40 || game.ball.x < -40 || game.ball.x > W + 40 || game.ball.y > H + 40)
+          const ddx = tg.x - game.ball.x;
+          const ddy = tg.y - game.ball.y;
+          if (ddx * ddx + ddy * ddy < (tg.r + BALL_R) * (tg.r + BALL_R)) {
+            game.score += tg.points;
+            setScore(game.score);
+            soundHit(tg.golden);
+            game.target = spawn();
+            resetBall();
+          } else if (
+            game.ball.y < -40 ||
+            game.ball.x < -40 ||
+            game.ball.x > W + 40 ||
+            game.ball.y > H + 40
           ) {
             endShotMiss();
           }
@@ -404,14 +421,16 @@ export function FlickGame({
     const ensureAudio = () => {
       try {
         if (!audioRef.current) {
-          const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          const Ctx =
+            window.AudioContext ||
+            (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
           audioRef.current = new Ctx();
         }
         if (audioRef.current.state === 'suspended') {
           void audioRef.current.resume();
         }
       } catch {
-        // Sin audio disponible.
+        // Sin audio.
       }
     };
     const onDown = (e: PointerEvent) => {
@@ -440,7 +459,6 @@ export function FlickGame({
       if (Math.hypot(dx, dy) < 10) {
         return;
       }
-      // El balón sale en la dirección del flick (siempre hacia arriba). WYSIWYG con la guía.
       game.ball.vx = clamp(dx * 3.0, -820, 820);
       game.ball.vy = clamp(dy * 3.0, -1750, -280);
       game.ball.flying = true;
@@ -459,10 +477,10 @@ export function FlickGame({
     };
   }, [runId]);
 
-  const restart = () => {
+  const start = () => {
     setScore(0);
     setMisses(0);
-    setOver(false);
+    setPhase('playing');
     setRunId((r) => r + 1);
   };
 
@@ -475,6 +493,17 @@ export function FlickGame({
 
   const topScore = highscores[0];
 
+  const board = (
+    <ol className="fg-board">
+      {highscores.slice(0, 5).map((h) => (
+        <li key={h.participant_id} className={h.participant_id === participantId ? 'fg-board-me' : ''}>
+          <span className="fg-board-name">{h.name}</span>
+          <span className="fg-board-pts">{h.score}</span>
+        </li>
+      ))}
+    </ol>
+  );
+
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="pg" role="dialog" aria-label="Tiro al arco" onClick={(e) => e.stopPropagation()}>
@@ -483,27 +512,41 @@ export function FlickGame({
           <button className="modal-close" onClick={onClose} aria-label="Cerrar">✕</button>
         </div>
 
-        <div className="pg-score">
-          <span>⭐ <strong>{score}</strong></span>
-          <span>❌ {misses}/3</span>
-          <button
-            type="button"
-            className="fg-mute"
-            onClick={toggleEffects}
-            title="Sonido y vibración"
-          >
-            {effectsOn ? '🔊' : '🔇'}
-          </button>
-        </div>
-        {topScore && (
-          <p className="muted hint fg-record">
-            🏆 Récord de todos: <strong>{topScore.name}</strong> con {topScore.score}
-          </p>
+        {phase !== 'start' && (
+          <>
+            <div className="pg-score">
+              <span>⭐ <strong>{score}</strong></span>
+              <span>❌ {misses}/3</span>
+              <button type="button" className="fg-mute" onClick={toggleEffects} title="Sonido y vibración">
+                {effectsOn ? '🔊' : '🔇'}
+              </button>
+            </div>
+            {topScore && (
+              <p className="muted hint fg-record">
+                🏆 Récord de todos: <strong>{topScore.name}</strong> con {topScore.score}
+              </p>
+            )}
+          </>
         )}
 
         <div className="fg-wrap">
           <canvas ref={canvasRef} className="fg-canvas" />
-          {over && (
+
+          {phase === 'start' && (
+            <div className="fg-over">
+              <div className="fg-over-card">
+                <div className="fg-over-title">🏆 Mejores del grupo</div>
+                {highscores.length > 0 ? (
+                  board
+                ) : (
+                  <p className="muted hint">Aún nadie ha jugado. ¡Sé el primero!</p>
+                )}
+                <button className="btn btn-primary" onClick={start}>▶ Comenzar</button>
+              </div>
+            </div>
+          )}
+
+          {phase === 'over' && (
             <div className="fg-over">
               <div className="fg-over-card">
                 <div className="fg-over-title">¡Fin del juego!</div>
@@ -511,28 +554,17 @@ export function FlickGame({
                 {!participantId && (
                   <p className="muted hint">Entra como participante para aparecer en la tabla.</p>
                 )}
-                {highscores.length > 0 && (
-                  <ol className="fg-board">
-                    {highscores.slice(0, 5).map((h) => (
-                      <li
-                        key={h.participant_id}
-                        className={h.participant_id === participantId ? 'fg-board-me' : ''}
-                      >
-                        <span className="fg-board-name">{h.name}</span>
-                        <span className="fg-board-pts">{h.score}</span>
-                      </li>
-                    ))}
-                  </ol>
-                )}
-                <button className="btn btn-primary" onClick={restart}>Jugar de nuevo</button>
+                {highscores.length > 0 && board}
+                <button className="btn btn-primary" onClick={start}>Jugar de nuevo</button>
               </div>
             </div>
           )}
         </div>
 
         <p className="muted hint pg-hint">
-          Desliza con el dedo para lanzar el balón en esa dirección. El dorado ✨ vale 5 y se mueve
-          más rápido; el resto vale 1. ¡3 fallos y se acaba!
+          Desliza con el dedo para lanzar el balón en esa dirección. Aparece <strong>un</strong> blanco a
+          la vez: cada acierto vale 1 (el dorado ✨ vale 5). Mientras más puntos, más pequeño y rápido. ¡3
+          fallos y se acaba!
         </p>
       </div>
     </div>
