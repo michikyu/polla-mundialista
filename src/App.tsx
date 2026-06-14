@@ -130,6 +130,13 @@ export function App() {
           <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
             🕐 {colombiaTime} · Colombia
           </span>
+          <button
+            className="clock-rules"
+            onClick={() => setShowRules(true)}
+            title="Ver las reglas de la polla"
+          >
+            📜 Reglas
+          </button>
         </div>
         <nav className="nav">
           {NAV_ITEMS.map((item) => (
@@ -158,19 +165,21 @@ export function App() {
         )}
       </main>
       <footer className="app-footer">
-        <button
-          className="footer-btn"
-          onClick={() => setShowRules(true)}
-          title="Ver las reglas de la polla"
+        <a
+          className="github-cta"
+          href="https://github.com/michikyu/polla-mundialista"
+          target="_blank"
+          rel="noopener noreferrer"
         >
-          📜 Reglas
-        </button>
+          ⚽ Haz tu propia polla gratis
+        </a>
         <button
-          className={isAdmin ? 'footer-btn unlocked' : 'footer-btn'}
+          className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
           onClick={() => void handleLockClick()}
           title={isAdmin ? 'Modo administrador activo' : 'Entrar como administrador'}
+          aria-label="Administrador"
         >
-          {isAdmin ? '🔓 Admin' : '🔒 Admin'}
+          {isAdmin ? '🔓' : '🔒'}
         </button>
       </footer>
     </div>
