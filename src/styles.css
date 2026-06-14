@@ -1265,6 +1265,68 @@ select:focus {
   border-radius: 999px;
 }
 
+/* Cuadro/árbol horizontal: columnas por ronda con líneas conectoras. */
+.bk-scroll-hint {
+  margin: 0 0 0.4rem;
+}
+
+.bk-tree {
+  display: flex;
+  align-items: stretch;
+  gap: 1.6rem;
+  overflow-x: auto;
+  padding-bottom: 0.5rem;
+  -webkit-overflow-scrolling: touch;
+}
+
+.bk-tree-col {
+  display: flex;
+  flex-direction: column;
+  flex: 0 0 10.5rem;
+}
+
+.bk-tree-col-title {
+  text-align: center;
+  font-size: 0.72rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+  color: var(--primary-dark);
+  background: #eef2ff;
+  border-radius: 999px;
+  padding: 0.18rem 0;
+  margin-bottom: 0.6rem;
+}
+
+.bk-tree-col-body {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-around;
+}
+
+.bk-tree .bk-card {
+  position: relative;
+  font-size: 0.82rem;
+  padding: 0.4rem 0.5rem;
+  margin: 0.18rem 0;
+}
+
+/* Línea conectora hacia la ronda anterior. */
+.bk-tree-col:not(:first-child) .bk-card::before {
+  content: '';
+  position: absolute;
+  left: -1.6rem;
+  top: 50%;
+  width: 1.6rem;
+  border-top: 2px solid var(--border);
+}
+
+.bk-third {
+  margin-top: 1.1rem;
+  max-width: 22rem;
+}
+
 .bk-cards {
   display: grid;
   grid-template-columns: 1fr;

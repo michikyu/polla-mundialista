@@ -88,6 +88,7 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
   const [error, setError] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
+  const [groupFilter, setGroupFilter] = useState<'todos' | string>('todos');
 
   useEffect(() => {
     api.getMatches().then(setMatches).catch((err: Error) => setError(err.message));
@@ -143,10 +144,19 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
           Se calcula sola con los resultados registrados. Avanzan los 2 primeros de cada grupo (verde) y los
           8 mejores terceros.
         </p>
+        <label className="select-label stage-filter">
+          Filtrar por grupo
+          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
+            <option value="todos">Todos los grupos</option>
+            {GROUP_LABELS.map((g) => (
+              <option key={g} value={g}>Grupo {g}</option>
+            ))}
+          </select>
+        </label>
       </section>
 
       <div className="groups-grid">
-        {GROUP_LABELS.map((group) => (
+        {(groupFilter === 'todos' ? GROUP_LABELS : [groupFilter]).map((group) => (
           <section key={group} className="card group-card">
             <h3 className="day-title">Grupo {group}</h3>
             <table className="table group-table">

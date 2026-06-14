@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Match, MatchStage, Participant, Prediction } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
+import { KNOCKOUT_BRACKET } from '../../shared/bracket';
 import { api } from '../api';
-import { formatDayLabel, groupByDay } from '../format';
+import { formatDayLabel, formatKickoff, groupByDay } from '../format';
 import { PredictionRow } from '../components/PredictionRow';
 
 interface Props {
@@ -58,8 +59,13 @@ export function PredictionsView({
   const pastMatches = byStage.filter((m) => m.status !== 'pendiente');
   const pastDays = groupByDay(pastMatches);
   const pastMatchCount = pastMatches.length;
-  // Fases que tienen al menos un partido (para no ofrecer filtros vacíos).
-  const stagesWithMatches = STAGE_ORDER.filter((s) => matches.some((m) => m.stage === s));
+
+  // Eliminatorias aún sin equipos: se muestran bloqueadas (con fecha y cruce), no predecibles.
+  const knockoutStages = STAGE_ORDER.filter((s) => s !== 'grupos');
+  const lockedStages = knockoutStages.filter(
+    (s) =>
+      (stageFilter === 'todos' || stageFilter === s) && !matches.some((m) => m.stage === s),
+  );
 
   const renderDay = (group: { day: string; items: Match[] }) => (
     <section key={group.day} className="card day-card">
@@ -109,25 +115,18 @@ export function PredictionsView({
           </p>
         )}
 
-        {selected && stagesWithMatches.length > 1 && (
+        {selected && (
           <label className="select-label stage-filter">
             Filtrar por fase
             <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value as 'todos' | MatchStage)}>
               <option value="todos">Todas las fases</option>
-              {stagesWithMatches.map((s) => (
+              {STAGE_ORDER.map((s) => (
                 <option key={s} value={s}>{STAGE_LABELS[s]}</option>
               ))}
             </select>
           </label>
         )}
       </section>
-
-      {selected && stageFilter !== 'todos' && stageFilter !== 'grupos' && currentDays.length === 0 && pastDays.length === 0 && (
-        <p className="muted">
-          🔒 Esta fase se desbloquea cuando se sepan los equipos clasificados. Vuelve cuando estén
-          definidos los cruces.
-        </p>
-      )}
 
       {selected && pastDays.length > 0 && (
         <>
@@ -140,6 +139,35 @@ export function PredictionsView({
         </>
       )}
       {selected && currentDays.map(renderDay)}
+
+      {selected &&
+        lockedStages.map((stage) => (
+          <section key={stage} className="card day-card">
+            <h3 className="day-title">{STAGE_LABELS[stage]} 🔒</h3>
+            <p className="muted hint">
+              Podrás predecir estos partidos cuando se conozcan los equipos clasificados.
+            </p>
+            {KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => (
+              <div key={slot.matchNumber} className="m-item">
+                <div className="m-row static">
+                  <span className="status-ico" title="Por definir">🔒</span>
+                  <div className="m-main">
+                    <div className="m-teams bracket-teams">
+                      <span>{slot.home}</span>
+                      <span className="vs">vs</span>
+                      <span>{slot.away}</span>
+                    </div>
+                    <div className="m-sub">
+                      {formatKickoff(slot.kickoff)}
+                      {slot.venue ? ` · ${slot.venue}` : ''}
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </section>
+        ))}
+
       {selected && matches.length === 0 && (
         <p className="muted">No hay partidos creados todavía.</p>
       )}
