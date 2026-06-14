@@ -141,9 +141,12 @@ export const api = {
       body: JSON.stringify(data),
     }),
 
-  // Passkey / huella (WebAuthn) — solo admin.
-  webauthnRegisterOptions: () =>
-    request<PublicKeyCredentialCreationOptionsJSON>('/api/webauthn/register/options', { method: 'POST' }),
+  // Passkey / huella (WebAuthn) — admin y participantes.
+  webauthnRegisterOptions: (participantId?: number) =>
+    request<PublicKeyCredentialCreationOptionsJSON>('/api/webauthn/register/options', {
+      method: 'POST',
+      body: JSON.stringify({ participantId }),
+    }),
   webauthnRegisterVerify: (response: RegistrationResponseJSON) =>
     request<{ verified: boolean }>('/api/webauthn/register/verify', {
       method: 'POST',
@@ -152,7 +155,12 @@ export const api = {
   webauthnLoginOptions: () =>
     request<PublicKeyCredentialRequestOptionsJSON>('/api/webauthn/login/options', { method: 'POST' }),
   webauthnLoginVerify: (response: AuthenticationResponseJSON) =>
-    request<{ verified: boolean; adminPassword: string }>('/api/webauthn/login/verify', {
+    request<{
+      verified: boolean;
+      role: 'admin' | 'participant';
+      participantId?: number;
+      secret: string;
+    }>('/api/webauthn/login/verify', {
       method: 'POST',
       body: JSON.stringify(response),
     }),

@@ -1,11 +1,9 @@
 import { useEffect, useState } from 'react';
-import type { Match, MatchStage } from '../../shared/types';
-import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
+import type { Match } from '../../shared/types';
 import { GROUP_LABELS, TEAMS } from '../../shared/teams';
-import { KNOCKOUT_BRACKET } from '../../shared/bracket';
 import { api } from '../api';
-import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from '../components/TeamLabel';
+import { KnockoutBracket } from '../components/KnockoutBracket';
 
 interface TeamStats {
   name: string;
@@ -127,18 +125,6 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
   const thirds = GROUP_LABELS.map((group) => ({ group, stats: (tables.get(group) as TeamStats[])[2] }))
     .sort((a, b) => compareStats(a.stats, b.stats));
 
-  const knockoutStages = STAGE_ORDER.filter((stage) => stage !== 'grupos');
-  // Partidos reales de eliminatoria por fase (los crea el sync cuando se definen los cruces).
-  const realByStage = new Map<MatchStage, Match[]>();
-  for (const stage of knockoutStages) {
-    realByStage.set(
-      stage,
-      matches
-        .filter((m) => m.stage === stage)
-        .sort((a, b) => a.kickoff.localeCompare(b.kickoff)),
-    );
-  }
-
   return (
     <div className="stack">
       {error && <p className="error">{error}</p>}
@@ -234,56 +220,7 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
           Bracket oficial de la FIFA. Cada ronda se llena sola con los clasificados cuando se actualizan
           los resultados; P73…P104 es el número oficial de cada partido.
         </p>
-        <div className="bracket">
-          {knockoutStages.map((stage) => {
-            const real = realByStage.get(stage) ?? [];
-            const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === stage);
-            return (
-              <div key={stage} className="bk-round">
-                <h3 className="bk-round-title">{STAGE_LABELS[stage]}</h3>
-                <div className="bk-cards">
-                  {real.length > 0
-                    ? real.map((match) => {
-                        const done = match.status === 'finalizado';
-                        const hs = match.home_score;
-                        const as = match.away_score;
-                        const homeWon = done && hs !== null && as !== null && hs > as;
-                        const awayWon = done && hs !== null && as !== null && as > hs;
-                        return (
-                          <button
-                            key={match.id}
-                            className="bk-card"
-                            onClick={() => onOpenMatch(match.id)}
-                            title={STATUS_LABELS[match.status]}
-                          >
-                            <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
-                              <TeamLabel name={match.home_team} side="home" />
-                              <span className="bk-score">{done ? hs : ''}</span>
-                            </div>
-                            <div className={awayWon ? 'bk-row winner' : 'bk-row'}>
-                              <TeamLabel name={match.away_team} side="home" />
-                              <span className="bk-score">{done ? as : ''}</span>
-                            </div>
-                            <div className="bk-meta">
-                              {STATUS_ICONS[match.status]} {formatKickoff(match.kickoff)}
-                            </div>
-                          </button>
-                        );
-                      })
-                    : slots.map((slot) => (
-                        <div key={slot.matchNumber} className="bk-card placeholder">
-                          <div className="bk-row tbd">{slot.home}</div>
-                          <div className="bk-row tbd">{slot.away}</div>
-                          <div className="bk-meta">
-                            <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
-                          </div>
-                        </div>
-                      ))}
-                </div>
-              </div>
-            );
-          })}
-        </div>
+        <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} />
       </section>
     </div>
   );

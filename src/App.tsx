@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react';
+import { startRegistration } from '@simplewebauthn/browser';
 import type { Participant } from '../shared/types';
 import { api, clearStoredPassword, getParticipantAuth, clearParticipantAuth } from './api';
 import { APP_TITLE } from './appConfig';
@@ -127,6 +128,25 @@ export function App() {
     setView('predictions');
   };
 
+  const handleRegisterMyPasskey = async () => {
+    const me = participants.find((p) => p.id === participantAuthId);
+    if (!me) {
+      return;
+    }
+    try {
+      const optionsJSON = await api.webauthnRegisterOptions(me.id);
+      const response = await startRegistration({ optionsJSON });
+      await api.webauthnRegisterVerify(response);
+      setPasskeyEnabled(true);
+      window.alert('✅ Huella/passkey activada. La próxima vez entra con tu huella.');
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      if (!/abort|cancel|NotAllowed/i.test(msg)) {
+        window.alert('No se pudo activar la huella/passkey: ' + msg);
+      }
+    }
+  };
+
   const handleSignOut = () => {
     if (isAdmin) {
       clearStoredPassword();
@@ -215,6 +235,16 @@ export function App() {
                         }}
                       >
                         📊 Mi avance
+                      </button>
+                    )}
+                    {!isAdmin && sessionParticipant && (
+                      <button
+                        onClick={() => {
+                          setSessionMenuOpen(false);
+                          void handleRegisterMyPasskey();
+                        }}
+                      >
+                        🔐 Activar huella
                       </button>
                     )}
                     {isAdmin && (

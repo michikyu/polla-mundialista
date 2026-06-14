@@ -42,8 +42,14 @@ export function LoginModal({
           return;
         }
         const result = await api.webauthnLoginVerify(response);
-        if (result.verified) {
-          setStoredPassword(result.adminPassword);
+        if (cancelled || !result.verified) {
+          return;
+        }
+        if (result.role === 'participant' && result.participantId) {
+          setParticipantAuth({ id: result.participantId, password: result.secret });
+          onParticipantLoggedIn(result.participantId);
+        } else {
+          setStoredPassword(result.secret);
           onAdminLoggedIn();
         }
       } catch {
@@ -53,7 +59,7 @@ export function LoginModal({
     return () => {
       cancelled = true;
     };
-  }, [passkeyEnabled, onAdminLoggedIn]);
+  }, [passkeyEnabled, onAdminLoggedIn, onParticipantLoggedIn]);
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();

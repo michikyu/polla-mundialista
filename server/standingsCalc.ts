@@ -91,6 +91,16 @@ export async function computeStandings(): Promise<StandingRow[]> {
     }
   }
 
+  // Los partidos finalizados que NO se predijeron también cuentan como fallidos.
+  const finishedResult = await db.execute(
+    "SELECT COUNT(*) AS n FROM matches WHERE status = 'finalizado' AND home_score IS NOT NULL AND away_score IS NOT NULL",
+  );
+  const finishedCount = Number(finishedResult.rows[0]?.n ?? 0);
+  for (const standing of byParticipant.values()) {
+    const predicted = standing.exact_hits + standing.outcome_hits + standing.misses;
+    standing.misses += Math.max(0, finishedCount - predicted);
+  }
+
   const NO_TIMESTAMP = '9999';
   return [...byParticipant.values()].sort(
     (a, b) =>

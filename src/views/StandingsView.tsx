@@ -170,7 +170,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
                     title={`Ver el avance de ${row.name}`}
                   >
                     <td>{index + 1}</td>
-                    <td className="left"><span className="link-name">{row.name}</span></td>
+                    <td className="left">{row.name}</td>
                     <td className="strong">
                       {row.points}
                       {row.handicap !== 0 && (
@@ -234,10 +234,10 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
         {standings.length === 0 && <p className="muted">No hay participantes todavía.</p>}
         <p className="muted hint">
           E = marcador exacto (5 pts si fuiste el único, 4 si fue repetido) · A = acertó ganador o empate
-          (3 pts) · F = falló (0 pts). A igual puntaje queda primero quien envió su predicción más temprano.
+          (3 pts) · F = falló o no predijo (0 pts). A igual puntaje queda primero quien envió su predicción más temprano.
           {standings.some((row) => row.handicap !== 0) && ' ✱ = el puntaje incluye puntos de handicap (ventaja inicial).'}
         </p>
-        <p className="muted hint">👆 Toca un nombre para ver cómo ha avanzado partido a partido.</p>
+        <p className="muted hint">👆 Toca una fila para ver cómo ese jugador ha avanzado partido a partido.</p>
       </section>
       {progressFor && (
         <ParticipantProgressModal

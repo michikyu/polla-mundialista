@@ -86,7 +86,7 @@ export function ParticipantProgressModal({ participantId, name, onClose }: Props
                   <span className="progress-detail">
                     {step.prediction ? (
                       <>
-                        Tu predicción: {step.prediction.home_goals}-{step.prediction.away_goals}{' '}
+                        Predicción: {step.prediction.home_goals}-{step.prediction.away_goals}{' '}
                         <span className={`points points-${step.gained}`}>+{step.gained}</span>
                       </>
                     ) : (

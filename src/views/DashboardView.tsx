@@ -4,6 +4,7 @@ import { api } from '../api';
 import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from '../components/TeamLabel';
 import { PredictionRing } from '../components/PredictionRing';
+import { KnockoutBracket } from '../components/KnockoutBracket';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const TOP_COUNT = 3;
@@ -142,6 +143,13 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
           ))
         )}
       </section>
+
+      {matches.some((m) => m.stage !== 'grupos') && (
+        <section className="card">
+          <h2>🏆 Eliminatorias</h2>
+          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} onlyReal />
+        </section>
+      )}
 
       <p className="muted hint">Toca cualquier partido para ver las predicciones de todos.</p>
     </div>

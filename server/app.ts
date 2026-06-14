@@ -36,7 +36,7 @@ app.use('/api', (req, res, next) => {
   if (
     req.method === 'GET' ||
     (req.method === 'PUT' && req.path === '/predictions') ||
-    (req.method === 'POST' && req.path.startsWith('/webauthn/login'))
+    (req.method === 'POST' && req.path.startsWith('/webauthn/'))
   ) {
     next();
     return;
