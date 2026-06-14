@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
-import type { Match, Participant, Prediction } from '../../shared/types';
+import type { Match, MatchStage, Participant, Prediction } from '../../shared/types';
+import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { api } from '../api';
 import { formatDayLabel, groupByDay } from '../format';
 import { PredictionRow } from '../components/PredictionRow';
@@ -23,6 +24,7 @@ export function PredictionsView({
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
   const [showPast, setShowPast] = useState(false);
+  const [stageFilter, setStageFilter] = useState<'todos' | MatchStage>('todos');
   const [error, setError] = useState('');
 
   useEffect(() => {
@@ -51,10 +53,13 @@ export function PredictionsView({
 
   // Por defecto solo se ven los partidos que aún NO empezaron (predecibles).
   // Los que ya arrancaron o terminaron van en el colapsable de "pasados".
-  const currentDays = groupByDay(matches.filter((m) => m.status === 'pendiente'));
-  const pastMatches = matches.filter((m) => m.status !== 'pendiente');
+  const byStage = stageFilter === 'todos' ? matches : matches.filter((m) => m.stage === stageFilter);
+  const currentDays = groupByDay(byStage.filter((m) => m.status === 'pendiente'));
+  const pastMatches = byStage.filter((m) => m.status !== 'pendiente');
   const pastDays = groupByDay(pastMatches);
   const pastMatchCount = pastMatches.length;
+  // Fases que tienen al menos un partido (para no ofrecer filtros vacíos).
+  const stagesWithMatches = STAGE_ORDER.filter((s) => matches.some((m) => m.stage === s));
 
   const renderDay = (group: { day: string; items: Match[] }) => (
     <section key={group.day} className="card day-card">
@@ -103,7 +108,26 @@ export function PredictionsView({
             las de los demás son secretas 🤫 hasta que empiece el partido. Reglas completas en 📜 arriba.
           </p>
         )}
+
+        {selected && stagesWithMatches.length > 1 && (
+          <label className="select-label stage-filter">
+            Filtrar por fase
+            <select value={stageFilter} onChange={(e) => setStageFilter(e.target.value as 'todos' | MatchStage)}>
+              <option value="todos">Todas las fases</option>
+              {stagesWithMatches.map((s) => (
+                <option key={s} value={s}>{STAGE_LABELS[s]}</option>
+              ))}
+            </select>
+          </label>
+        )}
       </section>
+
+      {selected && stageFilter !== 'todos' && stageFilter !== 'grupos' && currentDays.length === 0 && pastDays.length === 0 && (
+        <p className="muted">
+          🔒 Esta fase se desbloquea cuando se sepan los equipos clasificados. Vuelve cuando estén
+          definidos los cruces.
+        </p>
+      )}
 
       {selected && pastDays.length > 0 && (
         <>

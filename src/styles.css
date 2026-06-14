@@ -1237,38 +1237,32 @@ select:focus {
   color: var(--primary);
 }
 
-/* Bracket de eliminatorias: pestañas por ronda (estilo app, bueno en móvil). */
+/* Bracket de eliminatorias: filtro por fase + rondas apiladas en tarjetas. */
 .bk {
   margin-top: 0.5rem;
 }
 
-.bk-tabs {
+.bk .stage-filter {
+  margin: 0 0 0.9rem;
+}
+
+.bracket {
   display: flex;
-  flex-wrap: wrap;
-  gap: 0.3rem;
-  margin-bottom: 0.7rem;
-}
-
-.bk-tab {
-  border: 1px solid var(--border);
-  background: var(--card);
-  color: var(--muted);
-  border-radius: 999px;
-  padding: 0.32rem 0.75rem;
-  font-size: 0.8rem;
-  font-weight: 600;
-  cursor: pointer;
-}
-
-.bk-tab.active {
-  background: var(--primary);
-  border-color: var(--primary);
-  color: #fff;
+  flex-direction: column;
+  gap: 1.1rem;
 }
 
 .bk-stage-name {
+  display: inline-block;
   margin: 0 0 0.55rem;
-  font-size: 0.95rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary-dark);
+  background: #eef2ff;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
 }
 
 .bk-cards {

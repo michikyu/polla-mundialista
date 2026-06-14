@@ -10,22 +10,15 @@ interface Props {
   onOpenMatch: (id: number) => void;
   // onlyReal: solo rondas que ya tienen partidos con equipos definidos.
   onlyReal?: boolean;
+  // showFilter: muestra el selector de fase (default sí).
+  showFilter?: boolean;
 }
 
 const KNOCKOUT_STAGES: MatchStage[] = STAGE_ORDER.filter((s) => s !== 'grupos');
 
-// Etiquetas cortas para las pestañas (caben en móvil).
-const SHORT_LABELS: Record<MatchStage, string> = {
-  grupos: 'Grupos',
-  dieciseisavos: '16avos',
-  octavos: 'Octavos',
-  cuartos: 'Cuartos',
-  semifinal: 'Semis',
-  tercer_puesto: '3.º',
-  final: 'Final',
-};
+export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFilter = true }: Props) {
+  const [filter, setFilter] = useState<'todos' | MatchStage>('todos');
 
-export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false }: Props) {
   const realByStage = new Map<MatchStage, Match[]>();
   for (const stage of KNOCKOUT_STAGES) {
     realByStage.set(
@@ -34,82 +27,80 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false }: Prop
     );
   }
 
-  const stages = onlyReal
+  const availableStages = onlyReal
     ? KNOCKOUT_STAGES.filter((s) => (realByStage.get(s) ?? []).length > 0)
     : KNOCKOUT_STAGES;
 
-  // Ronda mostrada por defecto: la primera que tiene partidos sin terminar; si todas
-  // están definidas o ninguna, la primera de la lista.
-  const defaultStage =
-    stages.find((s) => (realByStage.get(s) ?? []).some((m) => m.status !== 'finalizado')) ??
-    [...stages].reverse().find((s) => (realByStage.get(s) ?? []).length > 0) ??
-    stages[0];
-
-  const [active, setActive] = useState<MatchStage | null>(null);
-  const current = active && stages.includes(active) ? active : defaultStage;
-
-  if (stages.length === 0 || !current) {
+  if (availableStages.length === 0) {
     return null;
   }
 
-  const real = realByStage.get(current) ?? [];
-  const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === current);
+  const shownStages =
+    filter !== 'todos' && availableStages.includes(filter) ? [filter] : availableStages;
+
+  const renderRound = (stage: MatchStage) => {
+    const real = realByStage.get(stage) ?? [];
+    const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === stage);
+    return (
+      <div key={stage} className="bk-round">
+        <h3 className="bk-stage-name">{STAGE_LABELS[stage]}</h3>
+        <div className="bk-cards">
+          {real.length > 0
+            ? real.map((match) => {
+                const done = match.status === 'finalizado';
+                const hs = match.home_score;
+                const as = match.away_score;
+                const homeWon = done && hs !== null && as !== null && hs > as;
+                const awayWon = done && hs !== null && as !== null && as > hs;
+                return (
+                  <button
+                    key={match.id}
+                    className="bk-card"
+                    onClick={() => onOpenMatch(match.id)}
+                    title={STATUS_LABELS[match.status]}
+                  >
+                    <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
+                      <TeamLabel name={match.home_team} side="home" />
+                      <span className="bk-score">{done ? hs : ''}</span>
+                    </div>
+                    <div className={awayWon ? 'bk-row winner' : 'bk-row'}>
+                      <TeamLabel name={match.away_team} side="home" />
+                      <span className="bk-score">{done ? as : ''}</span>
+                    </div>
+                    <div className="bk-meta">
+                      {STATUS_ICONS[match.status]} {formatKickoff(match.kickoff)}
+                    </div>
+                  </button>
+                );
+              })
+            : slots.map((slot) => (
+                <div key={slot.matchNumber} className="bk-card placeholder">
+                  <div className="bk-row tbd">{slot.home}</div>
+                  <div className="bk-row tbd">{slot.away}</div>
+                  <div className="bk-meta">
+                    <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
+                  </div>
+                </div>
+              ))}
+        </div>
+      </div>
+    );
+  };
 
   return (
     <div className="bk">
-      <div className="bk-tabs">
-        {stages.map((stage) => (
-          <button
-            key={stage}
-            className={stage === current ? 'bk-tab active' : 'bk-tab'}
-            onClick={() => setActive(stage)}
-          >
-            {SHORT_LABELS[stage]}
-          </button>
-        ))}
-      </div>
-
-      <h3 className="bk-stage-name">{STAGE_LABELS[current]}</h3>
-
-      <div className="bk-cards">
-        {real.length > 0
-          ? real.map((match) => {
-              const done = match.status === 'finalizado';
-              const hs = match.home_score;
-              const as = match.away_score;
-              const homeWon = done && hs !== null && as !== null && hs > as;
-              const awayWon = done && hs !== null && as !== null && as > hs;
-              return (
-                <button
-                  key={match.id}
-                  className="bk-card"
-                  onClick={() => onOpenMatch(match.id)}
-                  title={STATUS_LABELS[match.status]}
-                >
-                  <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
-                    <TeamLabel name={match.home_team} side="home" />
-                    <span className="bk-score">{done ? hs : ''}</span>
-                  </div>
-                  <div className={awayWon ? 'bk-row winner' : 'bk-row'}>
-                    <TeamLabel name={match.away_team} side="home" />
-                    <span className="bk-score">{done ? as : ''}</span>
-                  </div>
-                  <div className="bk-meta">
-                    {STATUS_ICONS[match.status]} {formatKickoff(match.kickoff)}
-                  </div>
-                </button>
-              );
-            })
-          : slots.map((slot) => (
-              <div key={slot.matchNumber} className="bk-card placeholder">
-                <div className="bk-row tbd">{slot.home}</div>
-                <div className="bk-row tbd">{slot.away}</div>
-                <div className="bk-meta">
-                  <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
-                </div>
-              </div>
+      {showFilter && (
+        <label className="select-label stage-filter">
+          Filtrar por fase
+          <select value={filter} onChange={(e) => setFilter(e.target.value as 'todos' | MatchStage)}>
+            <option value="todos">Todas las fases (bracket completo)</option>
+            {availableStages.map((s) => (
+              <option key={s} value={s}>{STAGE_LABELS[s]}</option>
             ))}
-      </div>
+          </select>
+        </label>
+      )}
+      <div className="bracket">{shownStages.map(renderRound)}</div>
     </div>
   );
 }
