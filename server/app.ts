@@ -10,6 +10,7 @@ import { standingsRouter } from './routes/standings';
 import { syncRouter } from './routes/sync';
 import { notifyRouter } from './routes/notify';
 import { settingsRouter } from './routes/settings';
+import { backupRouter } from './routes/backup';
 
 export const app = express();
 
@@ -45,6 +46,7 @@ app.use('/api/standings', standingsRouter);
 app.use('/api/sync-results', syncRouter);
 app.use('/api/notify', notifyRouter);
 app.use('/api/settings', settingsRouter);
+app.use('/api/backup', backupRouter);
 
 // Si el frontend fue compilado (npm run build), servirlo directamente (modo local).
 const distDir = path.join(import.meta.dirname, '..', 'dist');

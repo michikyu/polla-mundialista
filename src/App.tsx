@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { api, clearStoredPassword, setStoredPassword } from './api';
+import { api, clearStoredPassword, setStoredPassword, getParticipantAuth } from './api';
 import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
@@ -189,7 +189,7 @@ export function App() {
         )}
       </main>
       <footer className="app-footer">
-        {telegramLink && (
+        {telegramLink && (isAdmin || getParticipantAuth() !== null) && (
           <a className="telegram-cta" href={telegramLink} target="_blank" rel="noopener noreferrer">
             💬 Unirse al grupo de Telegram
           </a>

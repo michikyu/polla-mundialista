@@ -1,4 +1,4 @@
-import { useState, type FormEvent } from 'react';
+import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { api } from '../api';
 
 interface Props {
@@ -21,6 +21,47 @@ export function AdminSettingsModal({
   const [footballToken, setFootballToken] = useState('');
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
+  const [backupMsg, setBackupMsg] = useState('');
+  const fileInput = useRef<HTMLInputElement>(null);
+
+  const handleDownload = async () => {
+    setError('');
+    setBackupMsg('');
+    try {
+      const data = await api.getBackup();
+      const stamp = new Date().toISOString().slice(0, 16).replace(/[:T]/g, '-');
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `respaldo-polla-${stamp}.json`;
+      a.click();
+      URL.revokeObjectURL(url);
+      setBackupMsg('✅ Respaldo descargado.');
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
+
+  const handleRestore = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+    if (!file) {
+      return;
+    }
+    if (!window.confirm('⚠️ Esto REEMPLAZARÁ todos los datos actuales (participantes, partidos y predicciones) por los del archivo. ¿Continuar?')) {
+      return;
+    }
+    setError('');
+    setBackupMsg('');
+    try {
+      const data = JSON.parse(await file.text());
+      const result = await api.restoreBackup(data);
+      setBackupMsg(`✅ Restaurado: ${result.restored.participants} participantes, ${result.restored.predictions} predicciones.`);
+    } catch (err) {
+      setError('No se pudo restaurar: ' + (err as Error).message);
+    }
+  };
 
   const handleSubmit = async (event: FormEvent) => {
     event.preventDefault();
@@ -99,6 +140,26 @@ export function AdminSettingsModal({
             <button type="button" className="btn" onClick={onClose}>Cancelar</button>
           </div>
         </form>
+
+        <div className="settings-backup">
+          <span className="settings-label">💾 Respaldo de datos</span>
+          <span className="settings-help">
+            Descarga un archivo con todas las predicciones y participantes. Hazlo cada cierto tiempo
+            (la base en la nube no tiene copia automática). Para recuperar, sube ese archivo.
+          </span>
+          <div className="row-actions">
+            <button type="button" className="btn" onClick={() => void handleDownload()}>⬇️ Descargar respaldo</button>
+            <button type="button" className="btn" onClick={() => fileInput.current?.click()}>↩️ Restaurar</button>
+            <input
+              ref={fileInput}
+              type="file"
+              accept="application/json,.json"
+              style={{ display: 'none' }}
+              onChange={(e) => void handleRestore(e)}
+            />
+          </div>
+          {backupMsg && <p className="muted hint">{backupMsg}</p>}
+        </div>
       </div>
     </div>
   );

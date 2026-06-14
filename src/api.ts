@@ -103,6 +103,13 @@ export const api = {
 
   getStandings: () => request<StandingRow[]>('/api/standings'),
 
+  getBackup: () => request<Record<string, unknown>>('/api/backup'),
+  restoreBackup: (data: unknown) =>
+    request<{ ok: boolean; restored: { participants: number; matches: number; predictions: number } }>(
+      '/api/backup',
+      { method: 'POST', body: JSON.stringify(data) },
+    ),
+
   getSettings: () =>
     request<{ title: string | null; telegram_link: string | null; football_configured: boolean }>('/api/settings'),
   updateSettings: (data: { title?: string; telegram_link?: string; football_token?: string }) =>
