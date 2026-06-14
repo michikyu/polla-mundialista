@@ -75,3 +75,24 @@ export const GROUP_LABELS = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', '
 export function getTeam(name: string): TeamInfo {
   return TEAMS[name] ?? { code: name.slice(0, 3).toUpperCase(), alpha2: null, group: null };
 }
+
+// Emoji de la bandera a partir del código ISO (se arma con caracteres regionales,
+// sin pegar bytes de emoji al archivo). Inglaterra y Escocia usan secuencias especiales.
+export function flagEmoji(name: string): string {
+  const { alpha2 } = getTeam(name);
+  if (!alpha2) {
+    return '';
+  }
+  if (alpha2 === 'gb-eng') {
+    return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0065, 0xe006e, 0xe0067, 0xe007f);
+  }
+  if (alpha2 === 'gb-sct') {
+    return String.fromCodePoint(0x1f3f4, 0xe0067, 0xe0062, 0xe0073, 0xe0063, 0xe0074, 0xe007f);
+  }
+  if (alpha2.length === 2) {
+    return String.fromCodePoint(
+      ...[...alpha2.toUpperCase()].map((c) => 0x1f1e6 + c.charCodeAt(0) - 65),
+    );
+  }
+  return '';
+}

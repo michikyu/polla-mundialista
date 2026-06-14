@@ -2,7 +2,18 @@ import { db } from './db';
 import { kickoffTimestamp } from '../shared/time';
 import { calculatePoints, isExactHit } from '../shared/scoring';
 import { computeStandings } from './standingsCalc';
+import { flagEmoji } from '../shared/teams';
 import type { Match } from '../shared/types';
+
+// Nombre del equipo con su bandera. Local: bandera a la izquierda; visitante: a la derecha.
+function homeWithFlag(name: string): string {
+  const flag = flagEmoji(name);
+  return flag ? `${flag} ${name}` : name;
+}
+function awayWithFlag(name: string): string {
+  const flag = flagEmoji(name);
+  return flag ? `${name} ${flag}` : name;
+}
 
 const APP_URL = 'https://polla-moachos.vercel.app';
 // Ventana para el aviso previo: avisa si el partido empieza dentro de los próximos 45 min.
@@ -68,7 +79,7 @@ export async function sendPrematchAlerts(): Promise<number> {
     const hora = bogotaTime.format(new Date(kickoffTimestamp(match.kickoff)));
 
     const text = [
-      `⚽ ¡Ya casi! ${match.home_team} vs ${match.away_team}`,
+      `⚽ ¡Ya casi! ${homeWithFlag(match.home_team)} vs ${awayWithFlag(match.away_team)}`,
       `🕐 Hoy a las ${hora} (hora Colombia)${match.venue ? ` · ${match.venue}` : ''}`,
       missing.length > 0
         ? `🙈 Sin predicción: ${missing.join(', ')}\n📝 Corre a ponerla: ${APP_URL}`
@@ -150,7 +161,7 @@ export async function sendResultAlerts(): Promise<number> {
     });
 
     const text = [
-      `✅ Final: ${match.home_team} ${homeScore} - ${awayScore} ${match.away_team}`,
+      `✅ Final: ${homeWithFlag(match.home_team)} ${homeScore} - ${awayScore} ${awayWithFlag(match.away_team)}`,
       '',
       '📊 Tabla actualizada:',
       ...tableLines,
