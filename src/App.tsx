@@ -8,7 +8,7 @@ import { RulesModal } from './components/RulesModal';
 import { LoginModal } from './components/LoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParticipantProgressModal } from './components/ParticipantProgressModal';
-import { PenaltyGame } from './components/PenaltyGame';
+import { FlickGame } from './components/FlickGame';
 import { DEFAULT_SCORING, type ScoringConfig } from '../shared/scoring';
 import { SplashScreen } from './components/SplashScreen';
 import { DashboardView } from './views/DashboardView';
@@ -167,7 +167,7 @@ export function App() {
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
       {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
-      {showGame && <PenaltyGame onClose={() => setShowGame(false)} />}
+      {showGame && <FlickGame onClose={() => setShowGame(false)} />}
       {showLogin && (
         <LoginModal
           participants={participants}
