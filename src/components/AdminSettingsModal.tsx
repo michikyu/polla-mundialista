@@ -1,7 +1,38 @@
-import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { useEffect, useRef, useState, type ChangeEvent, type FormEvent } from 'react';
 import { startRegistration } from '@simplewebauthn/browser';
 import { api, type AppSettings } from '../api';
 import type { ScoringConfig } from '../../shared/scoring';
+
+const GAME_ENABLED = import.meta.env.VITE_ENABLE_GAME === 'true';
+
+// Reduce la imagen a máx. 512px y la devuelve como data URL PNG (payload liviano).
+function fileToScaledDataUrl(file: File, max = 512): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('No se pudo leer el archivo.'));
+    reader.onload = () => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('No se pudo cargar la imagen.'));
+      img.onload = () => {
+        const scale = Math.min(1, max / Math.max(img.width, img.height));
+        const w = Math.round(img.width * scale);
+        const h = Math.round(img.height * scale);
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          reject(new Error('No se pudo procesar la imagen.'));
+          return;
+        }
+        ctx.drawImage(img, 0, 0, w, h);
+        resolve(canvas.toDataURL('image/png'));
+      };
+      img.src = reader.result as string;
+    };
+    reader.readAsDataURL(file);
+  });
+}
 
 interface Props {
   currentTitle: string;
@@ -31,6 +62,57 @@ export function AdminSettingsModal({
   const [backupMsg, setBackupMsg] = useState('');
   const [passkeyMsg, setPasskeyMsg] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+  const [stickers, setStickers] = useState<number[]>([]);
+  const [stickerMsg, setStickerMsg] = useState('');
+  const [stickerBusy, setStickerBusy] = useState(false);
+  const stickerInput = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (!GAME_ENABLED) {
+      return;
+    }
+    api.getStickers().then((l) => setStickers(l.map((s) => s.id))).catch(() => {});
+  }, []);
+
+  const handleAddStickers = async (event: ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(event.target.files ?? []);
+    event.target.value = '';
+    if (files.length === 0) {
+      return;
+    }
+    setStickerBusy(true);
+    setStickerMsg('');
+    setError('');
+    try {
+      let added = 0;
+      for (const file of files) {
+        const dataUrl = await fileToScaledDataUrl(file);
+        await api.addSticker(dataUrl, 'image/png');
+        added += 1;
+      }
+      const list = await api.getStickers();
+      setStickers(list.map((s) => s.id));
+      setStickerMsg(`✅ ${added} imagen${added === 1 ? '' : 'es'} añadida${added === 1 ? '' : 's'}.`);
+    } catch (err) {
+      setError('No se pudo subir la imagen: ' + (err as Error).message);
+    } finally {
+      setStickerBusy(false);
+    }
+  };
+
+  const handleDeleteSticker = async (id: number) => {
+    if (!window.confirm('¿Eliminar esta imagen del mini-juego?')) {
+      return;
+    }
+    setStickerMsg('');
+    setError('');
+    try {
+      await api.deleteSticker(id);
+      setStickers((prev) => prev.filter((s) => s !== id));
+    } catch (err) {
+      setError('No se pudo eliminar: ' + (err as Error).message);
+    }
+  };
 
   const handleRegisterPasskey = async () => {
     setError('');
@@ -233,6 +315,55 @@ export function AdminSettingsModal({
           </div>
           {passkeyMsg && <p className="muted hint">{passkeyMsg}</p>}
         </div>
+
+        {GAME_ENABLED && (
+          <div className="settings-backup">
+            <span className="settings-label">🎯 Imágenes del mini-juego (Tiro al arco)</span>
+            <span className="settings-help">
+              Estas son las imágenes que aparecen como blancos en el arco. Añade o elimina las que
+              quieras (se reducen a 512px automáticamente).
+            </span>
+            {stickers.length === 0 ? (
+              <p className="muted hint">Aún no hay imágenes. Añade algunas abajo.</p>
+            ) : (
+              <div className="sticker-grid">
+                {stickers.map((id) => (
+                  <div key={id} className="sticker-cell">
+                    <img src={`/api/game/stickers/${id}`} alt={`Imagen ${id}`} loading="lazy" />
+                    <button
+                      type="button"
+                      className="sticker-del"
+                      onClick={() => void handleDeleteSticker(id)}
+                      aria-label="Eliminar imagen"
+                      title="Eliminar"
+                    >
+                      ✕
+                    </button>
+                  </div>
+                ))}
+              </div>
+            )}
+            <div className="row-actions">
+              <button
+                type="button"
+                className="btn"
+                onClick={() => stickerInput.current?.click()}
+                disabled={stickerBusy}
+              >
+                {stickerBusy ? 'Subiendo…' : '➕ Añadir imágenes'}
+              </button>
+              <input
+                ref={stickerInput}
+                type="file"
+                accept="image/png,image/jpeg,image/webp,image/gif"
+                multiple
+                style={{ display: 'none' }}
+                onChange={(e) => void handleAddStickers(e)}
+              />
+            </div>
+            {stickerMsg && <p className="muted hint">{stickerMsg}</p>}
+          </div>
+        )}
       </div>
     </div>
   );

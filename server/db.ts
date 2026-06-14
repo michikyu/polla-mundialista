@@ -94,6 +94,16 @@ async function init(): Promise<void> {
       updated_at TEXT
     )
   `);
+  // Imágenes (stickers) del mini-juego, guardadas en base64 para que el admin
+  // pueda gestionarlas desde la app (en Vercel el filesystem es de solo lectura).
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS game_stickers (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      data TEXT NOT NULL,
+      mime TEXT NOT NULL,
+      created_at TEXT
+    )
+  `);
   await migrate();
   await seedIfEmpty();
 }

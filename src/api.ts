@@ -178,4 +178,14 @@ export const api = {
       method: 'POST',
       body: JSON.stringify({ participant_id: participantId, score }),
     }),
+
+  // Imágenes (stickers) del juego: listar, añadir y eliminar (añadir/eliminar = solo admin).
+  getStickers: () => request<Array<{ id: number }>>('/api/game/stickers'),
+  addSticker: (data: string, mime: string) =>
+    request<{ id: number }>('/api/game/stickers', {
+      method: 'POST',
+      body: JSON.stringify({ data, mime }),
+    }),
+  deleteSticker: (id: number) =>
+    request<{ ok: boolean }>(`/api/game/stickers/${id}`, { method: 'DELETE' }),
 };

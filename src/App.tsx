@@ -214,7 +214,7 @@ export function App() {
         <div className="header-clock">
           {GAME_ENABLED ? (
             <button
-              className="colombia-time clock-game"
+              className="header-chip"
               onClick={() => {
                 if (isAdmin || sessionParticipant) {
                   setShowGame(true);
@@ -228,25 +228,25 @@ export function App() {
                   : 'Hora en Colombia (UTC-5) · inicia sesión para jugar ⚽'
               }
             >
-              🕐 {colombiaTime} · Colombia
+              🕐 {colombiaTime}
             </button>
           ) : (
-            <span className="colombia-time" title="Hora en Colombia (UTC-5)">
-              🕐 {colombiaTime} · Colombia
+            <span className="header-chip" title="Hora en Colombia (UTC-5)">
+              🕐 {colombiaTime}
             </span>
           )}
           {!isAdmin && !sessionParticipant ? (
             <button
-              className="session-chip session-guest"
+              className="header-chip session-guest"
               onClick={() => setShowLogin(true)}
               title="Entrar como participante o administrador"
             >
-              👀 Invitado · entrar
+              👀 Invitado
             </button>
           ) : (
             <div className="session-wrap">
               <button
-                className={isAdmin ? 'session-chip session-admin' : 'session-chip'}
+                className={isAdmin ? 'header-chip session-admin' : 'header-chip'}
                 onClick={() => setSessionMenuOpen((v) => !v)}
                 title="Tu sesión"
               >
@@ -301,7 +301,7 @@ export function App() {
             </div>
           )}
           <button
-            className="clock-rules"
+            className="header-chip"
             onClick={() => setShowRules(true)}
             title="Ver las reglas de la polla"
           >

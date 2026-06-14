@@ -16,7 +16,8 @@ import { gameRouter } from './routes/game';
 
 export const app = express();
 
-app.use(express.json());
+// Límite alto para permitir subir imágenes del mini-juego y restaurar respaldos.
+app.use(express.json({ limit: '8mb' }));
 
 // Garantiza que el esquema y los datos iniciales existan antes de atender peticiones.
 app.use(async (_req, _res, next) => {

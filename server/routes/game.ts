@@ -5,6 +5,76 @@ import { asId } from '../validate';
 
 export const gameRouter = Router();
 
+const ALLOWED_MIME = new Set(['image/png', 'image/jpeg', 'image/webp', 'image/gif']);
+const MAX_STICKER_BYTES = 1_500_000; // ~1.5 MB por imagen
+
+// Lista de imágenes del juego (solo los ids; cada imagen se baja por separado).
+gameRouter.get('/stickers', async (_req, res) => {
+  const result = await db.execute('SELECT id FROM game_stickers ORDER BY id');
+  res.json(result.rows.map((r) => ({ id: Number(r.id) })));
+});
+
+// Sirve los bytes de una imagen.
+gameRouter.get('/stickers/:id', async (req, res) => {
+  const id = asId(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: 'Id inválido.' });
+    return;
+  }
+  const result = await db.execute({
+    sql: 'SELECT data, mime FROM game_stickers WHERE id = ?',
+    args: [id],
+  });
+  const row = result.rows[0] as unknown as { data: string; mime: string } | undefined;
+  if (!row) {
+    res.status(404).json({ error: 'Imagen no encontrada.' });
+    return;
+  }
+  res.setHeader('Content-Type', row.mime);
+  res.setHeader('Cache-Control', 'public, max-age=86400');
+  res.send(Buffer.from(row.data, 'base64'));
+});
+
+// Añade una imagen (solo admin; lo exige el middleware global por ser POST).
+gameRouter.post('/stickers', async (req, res) => {
+  const body = req.body as { data?: unknown; mime?: unknown };
+  let data = typeof body?.data === 'string' ? body.data : '';
+  let mime = typeof body?.mime === 'string' ? body.mime : '';
+  // Acepta data URLs ("data:image/png;base64,....").
+  const match = data.match(/^data:([^;]+);base64,(.*)$/s);
+  if (match) {
+    mime = mime || match[1];
+    data = match[2];
+  }
+  data = data.trim();
+  if (!data || !ALLOWED_MIME.has(mime)) {
+    res.status(400).json({ error: 'Imagen inválida. Usa PNG, JPG, WEBP o GIF.' });
+    return;
+  }
+  // base64 ≈ 4/3 del tamaño real.
+  if (data.length * 0.75 > MAX_STICKER_BYTES) {
+    res.status(413).json({ error: 'La imagen es muy grande (máx. ~1.5 MB).' });
+    return;
+  }
+  const now = new Date().toISOString();
+  const result = await db.execute({
+    sql: 'INSERT INTO game_stickers (data, mime, created_at) VALUES (?, ?, ?)',
+    args: [data, mime, now],
+  });
+  res.json({ id: Number(result.lastInsertRowid) });
+});
+
+// Elimina una imagen (solo admin).
+gameRouter.delete('/stickers/:id', async (req, res) => {
+  const id = asId(req.params.id);
+  if (!id) {
+    res.status(400).json({ error: 'Id inválido.' });
+    return;
+  }
+  await db.execute({ sql: 'DELETE FROM game_stickers WHERE id = ?', args: [id] });
+  res.json({ ok: true });
+});
+
 // Tabla de mejores puntajes del mini-juego "Tiro al arco" (los 10 mejores).
 gameRouter.get('/highscores', async (_req, res) => {
   const result = await db.execute(`

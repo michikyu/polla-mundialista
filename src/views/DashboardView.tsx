@@ -5,6 +5,7 @@ import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from '../components/TeamLabel';
 import { PredictionRing } from '../components/PredictionRing';
 import { KnockoutBracket } from '../components/KnockoutBracket';
+import { GameLeaderboard } from '../components/GameLeaderboard';
 
 const MEDALS = ['🥇', '🥈', '🥉'];
 const TOP_COUNT = 3;
@@ -150,6 +151,8 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
           <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} onlyReal mode="list" />
         </section>
       )}
+
+      <GameLeaderboard />
 
       <p className="muted hint">Toca cualquier partido para ver las predicciones de todos.</p>
     </div>

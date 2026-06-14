@@ -96,6 +96,42 @@ body {
   margin-bottom: 0.6rem;
 }
 
+/* Chips del header (reloj/juego, sesión, reglas): todos con el mismo aspecto. */
+.header-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.25rem;
+  font-family: inherit;
+  font-size: 0.72rem;
+  font-weight: 600;
+  line-height: 1.4;
+  padding: 0.2rem 0.6rem;
+  border-radius: 999px;
+  border: 1px solid var(--border);
+  background: var(--card);
+  color: var(--muted);
+  white-space: nowrap;
+}
+
+button.header-chip {
+  cursor: pointer;
+}
+
+button.header-chip:hover {
+  border-color: var(--primary);
+  color: var(--primary);
+}
+
+.header-chip.session-admin {
+  background: #dcfce7;
+  border-color: #bbf7d0;
+  color: var(--success);
+}
+
+.header-chip.session-guest {
+  background: var(--bg);
+}
+
 /* Chip que indica la sesión actual (admin / participante / invitado). */
 .session-chip {
   font-size: 0.7rem;
@@ -1333,6 +1369,93 @@ select:focus {
 .fg-board-me {
   background: rgba(47, 158, 68, 0.18);
   font-weight: 700;
+}
+
+.fg-mute {
+  border: 1px solid var(--border);
+  background: var(--card);
+  border-radius: 999px;
+  padding: 0 0.4rem;
+  cursor: pointer;
+  font-size: 0.95rem;
+  line-height: 1.4;
+}
+
+/* Récords del mini-juego en Inicio. */
+.gl-board {
+  list-style: none;
+  margin: 0.4rem 0 0;
+  padding: 0;
+}
+
+.gl-row {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.2rem;
+  border-bottom: 1px solid var(--border);
+}
+
+.gl-row:last-child {
+  border-bottom: none;
+}
+
+.gl-medal {
+  width: 1.6rem;
+  text-align: center;
+}
+
+.gl-name {
+  flex: 1;
+  font-weight: 600;
+}
+
+.gl-pts {
+  font-weight: 800;
+  color: var(--primary);
+  font-variant-numeric: tabular-nums;
+}
+
+/* Gestor de imágenes del mini-juego (admin). */
+.sticker-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(64px, 1fr));
+  gap: 0.5rem;
+  margin: 0.4rem 0;
+}
+
+.sticker-cell {
+  position: relative;
+  aspect-ratio: 1;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--bg);
+}
+
+.sticker-cell img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+.sticker-del {
+  position: absolute;
+  top: 2px;
+  right: 2px;
+  width: 20px;
+  height: 20px;
+  border: none;
+  border-radius: 999px;
+  background: rgba(220, 38, 38, 0.9);
+  color: #fff;
+  font-size: 0.7rem;
+  line-height: 1;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .clock-game {

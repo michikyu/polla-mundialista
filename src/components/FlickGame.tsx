@@ -1,16 +1,21 @@
 import { useEffect, useRef, useState } from 'react';
 import { api } from '../api';
 
-// Stickers como blancos: public/keepers/keeper1.png … keeper14.png (los que existan).
-// Si no hay ninguno, se usan emojis de respaldo.
-const STICKER_PATHS = Array.from({ length: 14 }, (_, i) => `/keepers/keeper${i + 1}.png`);
-const FALLBACK_EMOJI = ['😎', '🧤', '🥅', '🔥', '🎯', '🙌', '🤡'];
-
+// El campo es lógico (360x540) y se escala al ancho disponible. Todo lo aleatorio
+// sale de una semilla FIJA: así los blancos aparecen en los mismos lugares, con la
+// misma velocidad y el mismo ritmo para todos → el puntaje es justo (solo cambia tu pulso).
 const W = 360;
 const H = 540;
 const GRAVITY = 1150; // px/s²
 const BALL_HOME = { x: 180, y: 500 };
 const BALL_R = 18;
+const SEED = 1337;
+const MAX_TARGETS = 3;
+
+// Zona interior del arco donde viven los blancos.
+const GOAL = { x0: 34, x1: W - 34, y0: 30, y1: 218 };
+const SPEED_NORMAL = 42; // px/s
+const SPEED_GOLD = 105; // el dorado se mueve más rápido
 
 interface HighScore {
   participant_id: number;
@@ -21,12 +26,26 @@ interface HighScore {
 interface Target {
   x: number;
   y: number;
+  vx: number;
+  vy: number;
   r: number;
-  img: HTMLImageElement | null;
-  emoji: string;
+  golden: boolean;
+  points: number;
+  imgIdx: number;
 }
 
-const rand = (a: number, b: number) => a + Math.random() * (b - a);
+// PRNG determinista (mulberry32): misma semilla → misma secuencia.
+function makeRng(seed: number): () => number {
+  let a = seed >>> 0;
+  return () => {
+    a = (a + 0x6d2b79f5) | 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+
+const clamp = (v: number, lo: number, hi: number) => Math.max(lo, Math.min(hi, v));
 
 export function FlickGame({
   onClose,
@@ -36,15 +55,15 @@ export function FlickGame({
   participantId: number | null;
 }) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const audioRef = useRef<AudioContext | null>(null);
+  const effectsRef = useRef(true);
   const [score, setScore] = useState(0);
-  const [combo, setCombo] = useState(1);
   const [misses, setMisses] = useState(0);
   const [over, setOver] = useState(false);
-  const [best, setBest] = useState(() => Number(localStorage.getItem('polla-flick-best') || 0));
+  const [effectsOn, setEffectsOn] = useState(true);
   const [runId, setRunId] = useState(0);
   const [highscores, setHighscores] = useState<HighScore[]>([]);
 
-  // Tabla global de mejores puntajes (de todos los participantes).
   useEffect(() => {
     api.getHighscores().then(setHighscores).catch(() => {});
   }, []);
@@ -61,7 +80,7 @@ export function FlickGame({
           await api.submitGameScore(participantId, score);
         }
       } catch {
-        // El puntaje no se pudo guardar (sin conexión, etc.); no rompe el juego.
+        // Sin conexión, etc.; no rompe el juego.
       }
       try {
         const hs = await api.getHighscores();
@@ -77,8 +96,6 @@ export function FlickGame({
     };
   }, [over, score, participantId]);
 
-  const topScore = highscores[0];
-
   useEffect(() => {
     const canvas = canvasRef.current;
     if (!canvas) {
@@ -88,73 +105,181 @@ export function FlickGame({
     if (!ctx) {
       return;
     }
-    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const dpr = Math.min(window.devicePixelRatio || 1, 3);
     canvas.width = W * dpr;
     canvas.height = H * dpr;
     ctx.scale(dpr, dpr);
+    ctx.imageSmoothingEnabled = true;
+    ctx.imageSmoothingQuality = 'high';
 
+    // Imágenes desde la API (las gestiona el admin). Se cargan async; se asignan al dibujar.
     const images: HTMLImageElement[] = [];
-    for (const src of STICKER_PATHS) {
-      const im = new Image();
-      im.onload = () => images.push(im);
-      im.src = src;
-    }
+    api
+      .getStickers()
+      .then((list) => {
+        for (const { id } of list) {
+          const im = new Image();
+          im.onload = () => images.push(im);
+          im.src = `/api/game/stickers/${id}`;
+        }
+      })
+      .catch(() => {});
+
+    const rng = makeRng(SEED);
+    const rr = (a: number, b: number) => a + rng() * (b - a);
 
     const game = {
       ball: { x: BALL_HOME.x, y: BALL_HOME.y, vx: 0, vy: 0, flying: false },
       targets: [] as Target[],
       score: 0,
-      combo: 1,
       misses: 0,
       over: false,
+      spawnCount: 0,
       drag: null as null | { sx: number; sy: number; cx: number; cy: number },
       last: 0,
-      sinceMove: 0,
+      time: 0,
     };
 
     const spawn = (): Target => {
-      const img = images.length ? images[Math.floor(Math.random() * images.length)] : null;
-      const r = rand(26, 34);
+      const golden = game.spawnCount % 6 === 5; // 1 de cada 6 es dorado (determinista)
+      game.spawnCount += 1;
+      const r = golden ? 27 : 32;
+      const x = rr(GOAL.x0 + r, GOAL.x1 - r);
+      const y = rr(GOAL.y0 + r, GOAL.y1 - r);
+      const ang = rng() * Math.PI * 2;
+      const speed = golden ? SPEED_GOLD : SPEED_NORMAL;
+      const imgIdx = Math.floor(rng() * 1000); // se mapea con % al dibujar
       return {
-        x: rand(40 + r, W - 40 - r),
-        y: rand(45 + r, 200),
+        x,
+        y,
+        vx: Math.cos(ang) * speed,
+        vy: Math.sin(ang) * speed,
         r,
-        img,
-        emoji: FALLBACK_EMOJI[Math.floor(Math.random() * FALLBACK_EMOJI.length)],
+        golden,
+        points: golden ? 5 : 1,
+        imgIdx,
       };
     };
-    game.targets = [spawn(), spawn()];
+    while (game.targets.length < MAX_TARGETS) {
+      game.targets.push(spawn());
+    }
 
     const resetBall = () => {
       game.ball = { x: BALL_HOME.x, y: BALL_HOME.y, vx: 0, vy: 0, flying: false };
     };
 
+    // --- Sonido + vibración -------------------------------------------------
+    const beep = (freq: number, dur: number, type: OscillatorType, vol: number, delay = 0) => {
+      const actx = audioRef.current;
+      if (!effectsRef.current || !actx) {
+        return;
+      }
+      const t0 = actx.currentTime + delay;
+      const osc = actx.createOscillator();
+      const gain = actx.createGain();
+      osc.type = type;
+      osc.frequency.setValueAtTime(freq, t0);
+      gain.gain.setValueAtTime(vol, t0);
+      gain.gain.exponentialRampToValueAtTime(0.0001, t0 + dur);
+      osc.connect(gain);
+      gain.connect(actx.destination);
+      osc.start(t0);
+      osc.stop(t0 + dur);
+    };
+    const vibrate = (pattern: number | number[]) => {
+      if (effectsRef.current && typeof navigator !== 'undefined' && navigator.vibrate) {
+        navigator.vibrate(pattern);
+      }
+    };
+    const soundHit = (golden: boolean) => {
+      if (golden) {
+        beep(880, 0.1, 'triangle', 0.16);
+        beep(1320, 0.14, 'triangle', 0.16, 0.08);
+        vibrate([25, 30, 25]);
+      } else {
+        beep(660, 0.12, 'triangle', 0.15);
+        vibrate(25);
+      }
+    };
+    const soundMiss = () => {
+      beep(160, 0.26, 'sawtooth', 0.12);
+      vibrate([45, 40, 45]);
+    };
+
     const endShotMiss = () => {
       resetBall();
-      game.combo = 1;
-      setCombo(1);
       game.misses += 1;
       setMisses(game.misses);
+      soundMiss();
       if (game.misses >= 3) {
         game.over = true;
         setOver(true);
-        setBest((b) => {
-          const nb = Math.max(b, game.score);
-          localStorage.setItem('polla-flick-best', String(nb));
-          return nb;
-        });
+      }
+    };
+
+    // --- Dibujo -------------------------------------------------------------
+    const drawBall = (cx: number, cy: number, R: number) => {
+      ctx.save();
+      ctx.beginPath();
+      ctx.arc(cx, cy, R, 0, Math.PI * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fill();
+      ctx.lineWidth = 2;
+      ctx.strokeStyle = '#1f2937';
+      ctx.stroke();
+      // Pentágono central (toque de balón, sin emoji).
+      ctx.fillStyle = '#1f2937';
+      ctx.beginPath();
+      for (let i = 0; i < 5; i++) {
+        const a = -Math.PI / 2 + (i * 2 * Math.PI) / 5;
+        const px = cx + Math.cos(a) * R * 0.34;
+        const py = cy + Math.sin(a) * R * 0.34;
+        if (i === 0) {
+          ctx.moveTo(px, py);
+        } else {
+          ctx.lineTo(px, py);
+        }
+      }
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    };
+
+    const drawTarget = (t: Target) => {
+      const img = images.length ? images[t.imgIdx % images.length] : null;
+      const pulse = t.golden ? 1 + 0.1 * Math.sin(game.time * 8) : 1;
+      const r = t.r * pulse;
+      if (t.golden) {
+        ctx.save();
+        ctx.shadowColor = 'rgba(255, 196, 0, 0.9)';
+        ctx.shadowBlur = 20;
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r + 3, 0, Math.PI * 2);
+        ctx.lineWidth = 4;
+        ctx.strokeStyle = '#ffc400';
+        ctx.stroke();
+        ctx.restore();
+      }
+      if (img) {
+        const d = r * 2;
+        ctx.drawImage(img, t.x - r, t.y - r, d, d);
+      } else {
+        // Sin imagen aún: círculo simple (nunca emoji).
+        ctx.beginPath();
+        ctx.arc(t.x, t.y, r, 0, Math.PI * 2);
+        ctx.fillStyle = t.golden ? '#ffd43b' : '#e9ecef';
+        ctx.fill();
       }
     };
 
     const draw = () => {
-      // Cancha
       const grd = ctx.createLinearGradient(0, 0, 0, H);
       grd.addColorStop(0, '#3aa757');
       grd.addColorStop(1, '#2f9e44');
       ctx.fillStyle = grd;
       ctx.fillRect(0, 0, W, H);
 
-      // Arco
+      // Arco + red
       ctx.strokeStyle = '#ffffff';
       ctx.lineWidth = 4;
       ctx.strokeRect(28, 24, W - 56, 200);
@@ -174,52 +299,66 @@ export function FlickGame({
       }
       ctx.globalAlpha = 1;
 
-      // Blancos. Las imágenes cargan de forma asíncrona: si un blanco aún no tiene
-      // imagen pero ya hay alguna lista, se la asignamos aquí (así no quedan en emoji).
       for (const t of game.targets) {
-        if (!t.img && images.length) {
-          t.img = images[Math.floor(Math.random() * images.length)];
-        }
-        if (t.img) {
-          const d = t.r * 2;
-          ctx.drawImage(t.img, t.x - t.r, t.y - t.r, d, d);
-        } else {
-          ctx.font = `${t.r * 1.6}px serif`;
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(t.emoji, t.x, t.y);
-        }
+        drawTarget(t);
       }
 
-      // Guía de apuntado
+      // Vista previa del tiro (trayectoria real con gravedad).
       if (game.drag) {
         const dx = game.drag.cx - game.drag.sx;
         const dy = game.drag.cy - game.drag.sy;
-        const len = Math.min(160, Math.hypot(dx, dy));
-        const ang = Math.atan2(-Math.abs(dy), dx);
-        ctx.strokeStyle = 'rgba(255,255,255,0.85)';
-        ctx.lineWidth = 3;
-        ctx.setLineDash([6, 6]);
-        ctx.beginPath();
-        ctx.moveTo(BALL_HOME.x, BALL_HOME.y);
-        ctx.lineTo(BALL_HOME.x + Math.cos(ang) * len, BALL_HOME.y + Math.sin(ang) * len);
-        ctx.stroke();
-        ctx.setLineDash([]);
+        if (Math.hypot(dx, dy) >= 10) {
+          const vx = clamp(dx * 3.0, -820, 820);
+          const vy = clamp(dy * 3.0, -1750, -280);
+          ctx.fillStyle = 'rgba(255,255,255,0.85)';
+          let px = BALL_HOME.x;
+          let py = BALL_HOME.y;
+          let pvy = vy;
+          for (let i = 0; i < 18; i++) {
+            const step = 0.035;
+            px += vx * step;
+            pvy += GRAVITY * step;
+            py += pvy * step;
+            if (py < 0 || px < 0 || px > W || py > H) {
+              break;
+            }
+            ctx.beginPath();
+            ctx.arc(px, py, 2.5, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
       }
 
-      // Balón (más grande)
-      ctx.font = '38px serif';
-      ctx.textAlign = 'center';
-      ctx.textBaseline = 'middle';
-      ctx.fillText('⚽', game.ball.x, game.ball.y);
+      drawBall(game.ball.x, game.ball.y, BALL_R);
     };
 
     let raf = 0;
     const loop = (t: number) => {
       const dt = Math.min(0.04, game.last ? (t - game.last) / 1000 : 0);
       game.last = t;
+      game.time += dt;
 
       if (!game.over) {
+        // Mover los blancos (suave) y rebotar dentro del arco.
+        for (const tg of game.targets) {
+          tg.x += tg.vx * dt;
+          tg.y += tg.vy * dt;
+          if (tg.x < GOAL.x0 + tg.r) {
+            tg.x = GOAL.x0 + tg.r;
+            tg.vx = Math.abs(tg.vx);
+          } else if (tg.x > GOAL.x1 - tg.r) {
+            tg.x = GOAL.x1 - tg.r;
+            tg.vx = -Math.abs(tg.vx);
+          }
+          if (tg.y < GOAL.y0 + tg.r) {
+            tg.y = GOAL.y0 + tg.r;
+            tg.vy = Math.abs(tg.vy);
+          } else if (tg.y > GOAL.y1 - tg.r) {
+            tg.y = GOAL.y1 - tg.r;
+            tg.vy = -Math.abs(tg.vy);
+          }
+        }
+
         if (game.ball.flying) {
           game.ball.vy += GRAVITY * dt;
           game.ball.x += game.ball.vx * dt;
@@ -230,32 +369,21 @@ export function FlickGame({
             const dx = tg.x - game.ball.x;
             const dy = tg.y - game.ball.y;
             if (dx * dx + dy * dy < (tg.r + BALL_R) * (tg.r + BALL_R)) {
+              game.score += tg.points;
+              setScore(game.score);
+              soundHit(tg.golden);
               game.targets.splice(i, 1);
               game.targets.push(spawn());
-              game.score += 10 * game.combo;
-              game.combo += 1;
-              setScore(game.score);
-              setCombo(game.combo);
               resetBall();
               break;
             }
           }
 
-          if (game.ball.flying && (game.ball.y < -40 || game.ball.x < -40 || game.ball.x > W + 40 || game.ball.y > H + 40)) {
+          if (
+            game.ball.flying &&
+            (game.ball.y < -40 || game.ball.x < -40 || game.ball.x > W + 40 || game.ball.y > H + 40)
+          ) {
             endShotMiss();
-          }
-        }
-
-        // Los blancos se reubican cada cierto tiempo (más rápido al subir el puntaje).
-        game.sinceMove += dt;
-        const interval = Math.max(1.1, 2.8 - game.score / 200);
-        if (game.sinceMove > interval) {
-          game.sinceMove = 0;
-          const t0 = game.targets[Math.floor(Math.random() * game.targets.length)];
-          if (t0) {
-            const fresh = spawn();
-            t0.x = fresh.x;
-            t0.y = fresh.y;
           }
         }
       }
@@ -265,14 +393,32 @@ export function FlickGame({
     };
     raf = requestAnimationFrame(loop);
 
+    // --- Entrada (flick) ----------------------------------------------------
     const toLocal = (e: PointerEvent) => {
-      const r = canvas.getBoundingClientRect();
-      return { x: (e.clientX - r.left) * (W / r.width), y: (e.clientY - r.top) * (H / r.height) };
+      const rect = canvas.getBoundingClientRect();
+      return {
+        x: ((e.clientX - rect.left) * W) / rect.width,
+        y: ((e.clientY - rect.top) * H) / rect.height,
+      };
+    };
+    const ensureAudio = () => {
+      try {
+        if (!audioRef.current) {
+          const Ctx = window.AudioContext || (window as unknown as { webkitAudioContext: typeof AudioContext }).webkitAudioContext;
+          audioRef.current = new Ctx();
+        }
+        if (audioRef.current.state === 'suspended') {
+          void audioRef.current.resume();
+        }
+      } catch {
+        // Sin audio disponible.
+      }
     };
     const onDown = (e: PointerEvent) => {
       if (game.over || game.ball.flying) {
         return;
       }
+      ensureAudio();
       const p = toLocal(e);
       game.drag = { sx: p.x, sy: p.y, cx: p.x, cy: p.y };
       canvas.setPointerCapture(e.pointerId);
@@ -294,9 +440,9 @@ export function FlickGame({
       if (Math.hypot(dx, dy) < 10) {
         return;
       }
-      // Siempre sale hacia arriba; la fuerza/altura dependen del deslizamiento.
-      game.ball.vx = Math.max(-700, Math.min(700, dx * 2.4));
-      game.ball.vy = Math.max(-1500, Math.min(-260, -Math.abs(dy) * 2.7 - 140));
+      // El balón sale en la dirección del flick (siempre hacia arriba). WYSIWYG con la guía.
+      game.ball.vx = clamp(dx * 3.0, -820, 820);
+      game.ball.vy = clamp(dy * 3.0, -1750, -280);
       game.ball.flying = true;
     };
     canvas.addEventListener('pointerdown', onDown);
@@ -315,11 +461,19 @@ export function FlickGame({
 
   const restart = () => {
     setScore(0);
-    setCombo(1);
     setMisses(0);
     setOver(false);
     setRunId((r) => r + 1);
   };
+
+  const toggleEffects = () => {
+    setEffectsOn((v) => {
+      effectsRef.current = !v;
+      return !v;
+    });
+  };
+
+  const topScore = highscores[0];
 
   return (
     <div className="modal-backdrop" onClick={onClose}>
@@ -331,9 +485,15 @@ export function FlickGame({
 
         <div className="pg-score">
           <span>⭐ <strong>{score}</strong></span>
-          <span>🔥 x{combo}</span>
           <span>❌ {misses}/3</span>
-          <span>🏅 {best}</span>
+          <button
+            type="button"
+            className="fg-mute"
+            onClick={toggleEffects}
+            title="Sonido y vibración"
+          >
+            {effectsOn ? '🔊' : '🔇'}
+          </button>
         </div>
         {topScore && (
           <p className="muted hint fg-record">
@@ -349,9 +509,7 @@ export function FlickGame({
                 <div className="fg-over-title">¡Fin del juego!</div>
                 <div className="fg-over-score">{score} puntos</div>
                 {!participantId && (
-                  <p className="muted hint">
-                    Entra como participante para aparecer en la tabla.
-                  </p>
+                  <p className="muted hint">Entra como participante para aparecer en la tabla.</p>
                 )}
                 {highscores.length > 0 && (
                   <ol className="fg-board">
@@ -373,8 +531,8 @@ export function FlickGame({
         </div>
 
         <p className="muted hint pg-hint">
-          Desliza con el dedo desde abajo para lanzar el balón ⚽ y pegarle a los stickers. La fuerza y la
-          altura dependen de tu deslizamiento. ¡3 fallos y se acaba!
+          Desliza con el dedo para lanzar el balón en esa dirección. El dorado ✨ vale 5 y se mueve
+          más rápido; el resto vale 1. ¡3 fallos y se acaba!
         </p>
       </div>
     </div>
