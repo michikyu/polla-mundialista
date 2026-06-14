@@ -25,6 +25,18 @@ const SHORT_LABELS: Record<string, string> = {
   final: 'Final',
 };
 
+// Etiqueta corta para los cupos por definir: "1.º Grupo E" → "1E", "3.º A/B/C/D/F" → "3·ABCDF",
+// "Gana P73" → "▸73", "Pierde P101" → "✗101".
+function compactLabel(s: string): string {
+  return s
+    .replace('1.º Grupo ', '1')
+    .replace('2.º Grupo ', '2')
+    .replace('3.º ', '3·')
+    .replace('Gana P', '▸')
+    .replace('Pierde P', '✗')
+    .replace(/\//g, '');
+}
+
 export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFilter = true }: Props) {
   const [filter, setFilter] = useState<'todos' | MatchStage>('todos');
 
@@ -44,7 +56,7 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFi
     return null;
   }
 
-  const matchCard = (match: Match): ReactNode => {
+  const matchCard = (match: Match, compact: boolean): ReactNode => {
     const done = match.status === 'finalizado';
     const hs = match.home_score;
     const as = match.away_score;
@@ -55,7 +67,7 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFi
         key={match.id}
         className="bk-card"
         onClick={() => onOpenMatch(match.id)}
-        title={STATUS_LABELS[match.status]}
+        title={`${match.home_team} vs ${match.away_team} · ${STATUS_LABELS[match.status]}`}
       >
         <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
           <TeamLabel name={match.home_team} side="home" />
@@ -65,29 +77,33 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFi
           <TeamLabel name={match.away_team} side="home" />
           <span className="bk-score">{done ? as : ''}</span>
         </div>
-        <div className="bk-meta">
-          {STATUS_ICONS[match.status]} {formatKickoff(match.kickoff)}
-        </div>
+        {!compact && (
+          <div className="bk-meta">
+            {STATUS_ICONS[match.status]} {formatKickoff(match.kickoff)}
+          </div>
+        )}
       </button>
     );
   };
 
-  const slotCard = (slot: BracketSlot): ReactNode => (
-    <div key={slot.matchNumber} className="bk-card placeholder">
-      <div className="bk-row tbd">{slot.home}</div>
-      <div className="bk-row tbd">{slot.away}</div>
-      <div className="bk-meta">
-        <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
-      </div>
+  const slotCard = (slot: BracketSlot, compact: boolean): ReactNode => (
+    <div key={slot.matchNumber} className="bk-card placeholder" title={`${slot.home} vs ${slot.away}`}>
+      <div className="bk-row tbd">{compact ? compactLabel(slot.home) : slot.home}</div>
+      <div className="bk-row tbd">{compact ? compactLabel(slot.away) : slot.away}</div>
+      {!compact && (
+        <div className="bk-meta">
+          <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
+        </div>
+      )}
     </div>
   );
 
-  const cardsFor = (stage: MatchStage): ReactNode[] => {
+  const cardsFor = (stage: MatchStage, compact = false): ReactNode[] => {
     const real = realByStage.get(stage) ?? [];
     if (real.length > 0) {
-      return real.map(matchCard);
+      return real.map((m) => matchCard(m, compact));
     }
-    return KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map(slotCard);
+    return KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => slotCard(slot, compact));
   };
 
   const renderRound = (stage: MatchStage) => (
@@ -119,12 +135,11 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, showFi
 
       {showTree ? (
         <>
-          <p className="muted hint bk-scroll-hint">↔️ Desliza para ver todo el cuadro.</p>
           <div className="bk-tree">
             {treeStages.map((stage) => (
               <div key={stage} className="bk-tree-col">
                 <div className="bk-tree-col-title">{SHORT_LABELS[stage]}</div>
-                <div className="bk-tree-col-body">{cardsFor(stage)}</div>
+                <div className="bk-tree-col-body">{cardsFor(stage, true)}</div>
               </div>
             ))}
           </div>

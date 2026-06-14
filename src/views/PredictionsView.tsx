@@ -60,12 +60,13 @@ export function PredictionsView({
   const pastDays = groupByDay(pastMatches);
   const pastMatchCount = pastMatches.length;
 
-  // Eliminatorias aún sin equipos: se muestran bloqueadas (con fecha y cruce), no predecibles.
-  const knockoutStages = STAGE_ORDER.filter((s) => s !== 'grupos');
+  // Eliminatorias aún sin equipos: se muestran bloqueadas (con fecha y cruce), no predecibles,
+  // continuando el calendario por fechas.
+  const knockoutStages: MatchStage[] = STAGE_ORDER.filter((s) => s !== 'grupos');
   const lockedStages = knockoutStages.filter(
-    (s) =>
-      (stageFilter === 'todos' || stageFilter === s) && !matches.some((m) => m.stage === s),
+    (s) => (stageFilter === 'todos' || stageFilter === s) && !matches.some((m) => m.stage === s),
   );
+  const lockedDays = groupByDay(KNOCKOUT_BRACKET.filter((s) => lockedStages.includes(s.stage)));
 
   const renderDay = (group: { day: string; items: Match[] }) => (
     <section key={group.day} className="card day-card">
@@ -140,14 +141,16 @@ export function PredictionsView({
       )}
       {selected && currentDays.map(renderDay)}
 
+      {selected && lockedDays.length > 0 && (
+        <p className="muted hint">
+          🔒 Eliminatorias: podrás predecirlas cuando se conozcan los equipos clasificados.
+        </p>
+      )}
       {selected &&
-        lockedStages.map((stage) => (
-          <section key={stage} className="card day-card">
-            <h3 className="day-title">{STAGE_LABELS[stage]} 🔒</h3>
-            <p className="muted hint">
-              Podrás predecir estos partidos cuando se conozcan los equipos clasificados.
-            </p>
-            {KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => (
+        lockedDays.map((group) => (
+          <section key={`lk-${group.day}`} className="card day-card">
+            <h3 className="day-title">{formatDayLabel(group.items[0].kickoff)}</h3>
+            {group.items.map((slot) => (
               <div key={slot.matchNumber} className="m-item">
                 <div className="m-row static">
                   <span className="status-ico" title="Por definir">🔒</span>

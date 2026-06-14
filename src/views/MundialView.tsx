@@ -132,18 +132,18 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
 
       <section className="card">
         <div className="card-header">
-          <h2>🌎 Fase de grupos</h2>
+          <h2>🌎 Mundial</h2>
           {isAdmin && (
             <button className="btn btn-primary" onClick={() => void handleSync()} disabled={syncing}>
               {syncing ? 'Buscando…' : '🔄 Actualizar resultados'}
             </button>
           )}
         </div>
-        {syncMessage && <p className="muted hint">{syncMessage}</p>}
         <p className="muted hint">
-          Se calcula sola con los resultados registrados. Avanzan los 2 primeros de cada grupo (verde) y los
-          8 mejores terceros.
+          Tablas de los 12 grupos (se calculan solas con los resultados), mejores terceros y el cuadro de
+          eliminatorias. Avanzan los 2 primeros de cada grupo 🟢 y los 8 mejores terceros.
         </p>
+        {syncMessage && <p className="muted hint">{syncMessage}</p>}
         <label className="select-label stage-filter">
           Filtrar por grupo
           <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
