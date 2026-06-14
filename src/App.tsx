@@ -1,10 +1,10 @@
 import { useEffect, useState } from 'react';
-import { startAuthentication } from '@simplewebauthn/browser';
 import type { Participant } from '../shared/types';
-import { api, clearStoredPassword, setStoredPassword, getParticipantAuth } from './api';
+import { api, clearStoredPassword, getParticipantAuth } from './api';
 import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
+import { LoginModal } from './components/LoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { DEFAULT_SCORING, type ScoringConfig } from '../shared/scoring';
 import { SplashScreen } from './components/SplashScreen';
@@ -46,6 +46,7 @@ export function App() {
   const [showSplash, setShowSplash] = useState(true);
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
+  const [showLogin, setShowLogin] = useState(false);
   const [title, setTitle] = useState(APP_TITLE);
   const [telegramLink, setTelegramLink] = useState('');
   const [footballConfigured, setFootballConfigured] = useState(false);
@@ -120,7 +121,8 @@ export function App() {
     setView('predictions');
   };
 
-  const handleLockClick = async () => {
+  // Un solo candado: si ya es admin, cierra sesión; si no, abre el login (passkey + contraseña).
+  const handleLockClick = () => {
     if (isAdmin) {
       if (window.confirm('¿Salir del modo administrador?')) {
         clearStoredPassword();
@@ -128,39 +130,7 @@ export function App() {
       }
       return;
     }
-    const password = window.prompt('Contraseña de administrador:');
-    if (!password) {
-      return;
-    }
-    try {
-      const result = await api.checkPassword(password);
-      if (result.ok) {
-        setStoredPassword(password);
-        setIsAdmin(true);
-      } else {
-        window.alert('Contraseña incorrecta.');
-      }
-    } catch {
-      window.alert('No se pudo verificar la contraseña.');
-    }
-  };
-
-  const handlePasskeyLogin = async () => {
-    try {
-      const optionsJSON = await api.webauthnLoginOptions();
-      const response = await startAuthentication({ optionsJSON });
-      const result = await api.webauthnLoginVerify(response);
-      if (result.verified) {
-        setStoredPassword(result.adminPassword);
-        setIsAdmin(true);
-      }
-    } catch (err) {
-      const msg = (err as Error).message || '';
-      // Si el usuario cancela el diálogo de huella, no mostramos error.
-      if (!/abort|cancel|NotAllowed/i.test(msg)) {
-        window.alert('No se pudo entrar con la huella/passkey.');
-      }
-    }
+    setShowLogin(true);
   };
 
   // Etiqueta de la sesión actual (admin / participante / invitado).
@@ -173,6 +143,16 @@ export function App() {
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
       {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
+      {showLogin && (
+        <LoginModal
+          passkeyEnabled={passkeyEnabled}
+          onLoggedIn={() => {
+            setIsAdmin(true);
+            setShowLogin(false);
+          }}
+          onClose={() => setShowLogin(false)}
+        />
+      )}
       <header className="app-header">
         <div className="header-top">
           <h1>
@@ -260,18 +240,9 @@ export function App() {
               ⚙️ Configuración
             </button>
           )}
-          {!isAdmin && passkeyEnabled && (
-            <button
-              className="admin-config"
-              onClick={() => void handlePasskeyLogin()}
-              title="Entrar como admin con tu huella/Face ID/passkey"
-            >
-              🔐 Huella
-            </button>
-          )}
           <button
             className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
-            onClick={() => void handleLockClick()}
+            onClick={handleLockClick}
             title={isAdmin ? 'Modo administrador activo' : 'Entrar como administrador'}
             aria-label="Administrador"
           >

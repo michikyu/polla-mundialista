@@ -60,7 +60,8 @@ webauthnRouter.post('/register/options', async (req, res) => {
     userID: new TextEncoder().encode(ADMIN_USER_ID),
     attestationType: 'none',
     excludeCredentials: existing.map((c) => ({ id: c.id, transports: parseTransports(c.transports) })),
-    authenticatorSelection: { residentKey: 'preferred', userVerification: 'preferred' },
+    // residentKey 'required' = passkey descubrible → necesaria para el autocompletado (Conditional UI).
+    authenticatorSelection: { residentKey: 'required', userVerification: 'preferred' },
   });
   await setSetting(CHALLENGE_KEY, options.challenge);
   res.json(options);
@@ -109,10 +110,10 @@ webauthnRouter.post('/register/verify', async (req, res) => {
 // --- Login (público; app.ts deja pasar /webauthn/login sin contraseña) ---
 webauthnRouter.post('/login/options', async (req, res) => {
   const { rpID } = relyingParty(req);
-  const creds = await loadCredentials();
+  // Sin allowCredentials: login "descubrible" → el navegador ofrece las passkeys
+  // guardadas como autocompletado (Conditional UI), sin elegir usuario primero.
   const options = await generateAuthenticationOptions({
     rpID,
-    allowCredentials: creds.map((c) => ({ id: c.id, transports: parseTransports(c.transports) })),
     userVerification: 'preferred',
   });
   await setSetting(CHALLENGE_KEY, options.challenge);
