@@ -20,6 +20,10 @@ import { MatchDetailView } from './views/MatchDetailView';
 
 type View = 'dashboard' | 'matches' | 'predictions' | 'standings' | 'mundial' | 'matchDetail';
 
+// El mini-juego solo se habilita en este sitio (VITE_ENABLE_GAME en .env.local / Vercel),
+// no para quien descargue el repo público de GitHub.
+const GAME_ENABLED = import.meta.env.VITE_ENABLE_GAME === 'true';
+
 const colombiaTimeFormatter = new Intl.DateTimeFormat('es-CO', {
   timeZone: 'America/Bogota',
   hour: 'numeric',
@@ -167,7 +171,9 @@ export function App() {
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
       {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
-      {showGame && <FlickGame onClose={() => setShowGame(false)} />}
+      {showGame && (
+        <FlickGame participantId={participantAuthId} onClose={() => setShowGame(false)} />
+      )}
       {showLogin && (
         <LoginModal
           participants={participants}
@@ -206,13 +212,29 @@ export function App() {
           </h1>
         </div>
         <div className="header-clock">
-          <button
-            className="colombia-time clock-game"
-            onClick={() => setShowGame(true)}
-            title="Hora en Colombia (UTC-5) · ¡toca para jugar tiro al arco! ⚽"
-          >
-            🕐 {colombiaTime} · Colombia
-          </button>
+          {GAME_ENABLED ? (
+            <button
+              className="colombia-time clock-game"
+              onClick={() => {
+                if (isAdmin || sessionParticipant) {
+                  setShowGame(true);
+                } else {
+                  setShowLogin(true);
+                }
+              }}
+              title={
+                isAdmin || sessionParticipant
+                  ? 'Hora en Colombia (UTC-5) · ¡toca para jugar tiro al arco! ⚽'
+                  : 'Hora en Colombia (UTC-5) · inicia sesión para jugar ⚽'
+              }
+            >
+              🕐 {colombiaTime} · Colombia
+            </button>
+          ) : (
+            <span className="colombia-time" title="Hora en Colombia (UTC-5)">
+              🕐 {colombiaTime} · Colombia
+            </span>
+          )}
           {!isAdmin && !sessionParticipant ? (
             <button
               className="session-chip session-guest"

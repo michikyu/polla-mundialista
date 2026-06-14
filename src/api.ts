@@ -169,4 +169,13 @@ export const api = {
     request<{ checked: number; updated: number; created: number; unmatched: string[] }>('/api/sync-results', {
       method: 'POST',
     }),
+
+  // Mini-juego "Tiro al arco": tabla de mejores puntajes y envío del propio puntaje.
+  getHighscores: () =>
+    request<Array<{ participant_id: number; name: string; score: number }>>('/api/game/highscores'),
+  submitGameScore: (participantId: number, score: number) =>
+    request<{ best: number }>('/api/game/score', {
+      method: 'POST',
+      body: JSON.stringify({ participant_id: participantId, score }),
+    }),
 };

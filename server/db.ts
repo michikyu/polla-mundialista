@@ -86,6 +86,14 @@ async function init(): Promise<void> {
       created_at TEXT
     )
   `);
+  // Mejor puntaje de cada participante en el mini-juego "Tiro al arco".
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS game_scores (
+      participant_id INTEGER PRIMARY KEY REFERENCES participants(id),
+      score INTEGER NOT NULL DEFAULT 0,
+      updated_at TEXT
+    )
+  `);
   await migrate();
   await seedIfEmpty();
 }

@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import { api } from '../api';
 
 // Stickers como blancos: public/keepers/keeper1.png … keeper14.png (los que existan).
 // Si no hay ninguno, se usan emojis de respaldo.
@@ -9,7 +10,13 @@ const W = 360;
 const H = 540;
 const GRAVITY = 1150; // px/s²
 const BALL_HOME = { x: 180, y: 500 };
-const BALL_R = 12;
+const BALL_R = 18;
+
+interface HighScore {
+  participant_id: number;
+  name: string;
+  score: number;
+}
 
 interface Target {
   x: number;
@@ -21,7 +28,13 @@ interface Target {
 
 const rand = (a: number, b: number) => a + Math.random() * (b - a);
 
-export function FlickGame({ onClose }: { onClose: () => void }) {
+export function FlickGame({
+  onClose,
+  participantId,
+}: {
+  onClose: () => void;
+  participantId: number | null;
+}) {
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const [score, setScore] = useState(0);
   const [combo, setCombo] = useState(1);
@@ -29,6 +42,42 @@ export function FlickGame({ onClose }: { onClose: () => void }) {
   const [over, setOver] = useState(false);
   const [best, setBest] = useState(() => Number(localStorage.getItem('polla-flick-best') || 0));
   const [runId, setRunId] = useState(0);
+  const [highscores, setHighscores] = useState<HighScore[]>([]);
+
+  // Tabla global de mejores puntajes (de todos los participantes).
+  useEffect(() => {
+    api.getHighscores().then(setHighscores).catch(() => {});
+  }, []);
+
+  // Al terminar: guarda tu puntaje (si entraste como participante) y refresca la tabla.
+  useEffect(() => {
+    if (!over) {
+      return;
+    }
+    let cancelled = false;
+    void (async () => {
+      try {
+        if (participantId) {
+          await api.submitGameScore(participantId, score);
+        }
+      } catch {
+        // El puntaje no se pudo guardar (sin conexión, etc.); no rompe el juego.
+      }
+      try {
+        const hs = await api.getHighscores();
+        if (!cancelled) {
+          setHighscores(hs);
+        }
+      } catch {
+        // Ignorar.
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [over, score, participantId]);
+
+  const topScore = highscores[0];
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -125,8 +174,12 @@ export function FlickGame({ onClose }: { onClose: () => void }) {
       }
       ctx.globalAlpha = 1;
 
-      // Blancos
+      // Blancos. Las imágenes cargan de forma asíncrona: si un blanco aún no tiene
+      // imagen pero ya hay alguna lista, se la asignamos aquí (así no quedan en emoji).
       for (const t of game.targets) {
+        if (!t.img && images.length) {
+          t.img = images[Math.floor(Math.random() * images.length)];
+        }
         if (t.img) {
           const d = t.r * 2;
           ctx.drawImage(t.img, t.x - t.r, t.y - t.r, d, d);
@@ -154,8 +207,8 @@ export function FlickGame({ onClose }: { onClose: () => void }) {
         ctx.setLineDash([]);
       }
 
-      // Balón
-      ctx.font = '24px serif';
+      // Balón (más grande)
+      ctx.font = '38px serif';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       ctx.fillText('⚽', game.ball.x, game.ball.y);
@@ -282,6 +335,11 @@ export function FlickGame({ onClose }: { onClose: () => void }) {
           <span>❌ {misses}/3</span>
           <span>🏅 {best}</span>
         </div>
+        {topScore && (
+          <p className="muted hint fg-record">
+            🏆 Récord de todos: <strong>{topScore.name}</strong> con {topScore.score}
+          </p>
+        )}
 
         <div className="fg-wrap">
           <canvas ref={canvasRef} className="fg-canvas" />
@@ -290,6 +348,24 @@ export function FlickGame({ onClose }: { onClose: () => void }) {
               <div className="fg-over-card">
                 <div className="fg-over-title">¡Fin del juego!</div>
                 <div className="fg-over-score">{score} puntos</div>
+                {!participantId && (
+                  <p className="muted hint">
+                    Entra como participante para aparecer en la tabla.
+                  </p>
+                )}
+                {highscores.length > 0 && (
+                  <ol className="fg-board">
+                    {highscores.slice(0, 5).map((h) => (
+                      <li
+                        key={h.participant_id}
+                        className={h.participant_id === participantId ? 'fg-board-me' : ''}
+                      >
+                        <span className="fg-board-name">{h.name}</span>
+                        <span className="fg-board-pts">{h.score}</span>
+                      </li>
+                    ))}
+                  </ol>
+                )}
                 <button className="btn btn-primary" onClick={restart}>Jugar de nuevo</button>
               </div>
             </div>
