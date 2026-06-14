@@ -39,6 +39,8 @@ A igual puntaje, queda primero quien **envió su predicción más temprano**.
 
 ## 🚀 Despliega la tuya gratis (Vercel + Turso)
 
+[![Deploy with Vercel](https://vercel.com/button)](https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fmichikyu%2Fpolla-mundialista&env=ADMIN_PASSWORD,TURSO_DATABASE_URL,TURSO_AUTH_TOKEN&envDescription=Contrase%C3%B1a%20de%20admin%20y%20credenciales%20de%20tu%20base%20Turso)
+
 No necesitas tarjeta de crédito.
 
 1. **Haz fork** de este repo a tu cuenta de GitHub.
