@@ -89,15 +89,14 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
     </section>
   );
 
-  // Si filtras por una fase de eliminatoria que aún no tiene partidos, muestra la
-  // plantilla oficial (P73…) para que el filtro por fase también sirva, como en Mundial.
-  const placeholderStage =
-    stageFilter !== 'todos' && stageFilter !== 'grupos' && !matches.some((m) => m.stage === stageFilter)
-      ? (stageFilter as MatchStage)
-      : null;
-  const placeholderSlots = placeholderStage
-    ? KNOCKOUT_BRACKET.filter((s) => s.stage === placeholderStage)
-    : [];
+  // Fases de eliminatoria que aún no tienen partidos reales: se muestran como plantilla
+  // oficial (P73…), tanto en "Todas las fases" como al filtrar una fase puntual.
+  const placeholderStages = STAGE_ORDER.filter(
+    (s) =>
+      s !== 'grupos' &&
+      (stageFilter === 'todos' || stageFilter === s) &&
+      !matches.some((m) => m.stage === s),
+  );
 
   return (
     <div className="stack">
@@ -175,14 +174,10 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
       )}
       {currentDays.map(renderDay)}
 
-      {placeholderStage && (
-        <section className="card day-card">
-          <h3 className="day-title">{STAGE_LABELS[placeholderStage]} — por definir</h3>
-          <p className="muted hint">
-            Estos cruces se llenan solos con los clasificados (o el admin los crea). P73…P104 es el número
-            oficial de cada partido.
-          </p>
-          {placeholderSlots.map((slot) => (
+      {placeholderStages.map((stage) => (
+        <section key={stage} className="card day-card">
+          <h3 className="day-title">{STAGE_LABELS[stage]} — por definir</h3>
+          {KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => (
             <div key={slot.matchNumber} className="m-item bracket-slot">
               <div className="m-row">
                 <span className="status-ico" title="Cruce por definir">⬜</span>
@@ -203,7 +198,7 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
             </div>
           ))}
         </section>
-      )}
+      ))}
 
       {matches.length === 0 && (
         <p className="muted">No hay partidos. Crea el primero con el botón de arriba.</p>

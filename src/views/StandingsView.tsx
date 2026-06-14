@@ -163,17 +163,14 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
                     </td>
                   </tr>
                 ) : (
-                  <tr key={row.participant_id} className={index === 0 ? 'leader' : ''}>
+                  <tr
+                    key={row.participant_id}
+                    className={index === 0 ? 'leader clickable-row' : 'clickable-row'}
+                    onClick={() => setProgressFor({ id: row.participant_id, name: row.name })}
+                    title={`Ver el avance de ${row.name}`}
+                  >
                     <td>{index + 1}</td>
-                    <td className="left">
-                      <button
-                        className="link-name"
-                        onClick={() => setProgressFor({ id: row.participant_id, name: row.name })}
-                        title={`Ver el avance de ${row.name}`}
-                      >
-                        {row.name}
-                      </button>
-                    </td>
+                    <td className="left"><span className="link-name">{row.name}</span></td>
                     <td className="strong">
                       {row.points}
                       {row.handicap !== 0 && (
@@ -189,7 +186,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
                     <td>{row.outcome_hits}</td>
                     <td>{row.misses}</td>
                     {isAdmin && (
-                      <td className="actions-cell">
+                      <td className="actions-cell" onClick={(e) => e.stopPropagation()}>
                         <div className="kebab-wrap">
                           <button
                             className="kebab"

@@ -12,7 +12,7 @@ interface Props {
 
 interface Step {
   match: Match;
-  prediction: Prediction;
+  prediction: Prediction | null;
   gained: number;
   total: number;
 }
@@ -27,22 +27,23 @@ export function ParticipantProgressModal({ participantId, name, onClose }: Props
   useEffect(() => {
     Promise.all([api.getPredictions(participantId), api.getMatches(), api.getStandings()])
       .then(([predictions, matches, standings]) => {
-        const matchById = new Map(matches.map((m) => [m.id, m]));
+        const predByMatch = new Map(predictions.map((p) => [p.match_id, p]));
         const row = standings.find((s: StandingRow) => s.participant_id === participantId);
         const h = row?.handicap ?? 0;
         setHandicap(h);
         setFinalTotal(row?.points ?? h);
 
-        // Solo partidos finalizados (tienen puntos), en orden cronológico.
-        const scored = predictions
-          .filter((p) => p.points !== null && matchById.has(p.match_id))
-          .map((p) => ({ p, m: matchById.get(p.match_id) as Match }))
-          .sort((a, b) => a.m.kickoff.localeCompare(b.m.kickoff));
+        // TODOS los partidos finalizados en orden, hayan predicho o no.
+        const finished = matches
+          .filter((m) => m.status === 'finalizado' && m.home_score !== null && m.away_score !== null)
+          .sort((a, b) => a.kickoff.localeCompare(b.kickoff));
 
         let running = h;
-        const built: Step[] = scored.map(({ p, m }) => {
-          running += p.points ?? 0;
-          return { match: m, prediction: p, gained: p.points ?? 0, total: running };
+        const built: Step[] = finished.map((m) => {
+          const pred = predByMatch.get(m.id) ?? null;
+          const gained = pred?.points ?? 0;
+          running += gained;
+          return { match: m, prediction: pred, gained, total: running };
         });
         setSteps(built);
       })
@@ -83,17 +84,21 @@ export function ParticipantProgressModal({ participantId, name, onClose }: Props
                     <span className="progress-date">{formatKickoff(step.match.kickoff)}</span>
                   </span>
                   <span className="progress-detail">
-                    Tu predicción: {step.prediction.home_goals}-{step.prediction.away_goals}{' '}
-                    <span className={`points points-${step.gained}`}>+{step.gained}</span>
+                    {step.prediction ? (
+                      <>
+                        Tu predicción: {step.prediction.home_goals}-{step.prediction.away_goals}{' '}
+                        <span className={`points points-${step.gained}`}>+{step.gained}</span>
+                      </>
+                    ) : (
+                      <span className="muted">Sin predicción · +0</span>
+                    )}
                   </span>
                   <span className="progress-total">{step.total}</span>
                 </li>
               ))}
             </ol>
 
-            {steps.length === 0 && (
-              <p className="muted">Aún no hay partidos finalizados con su predicción.</p>
-            )}
+            {steps.length === 0 && <p className="muted">Aún no hay partidos finalizados.</p>}
           </>
         )}
       </div>

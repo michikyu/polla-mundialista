@@ -134,17 +134,19 @@ button.session-chip:hover {
 
 /* Nombre clickeable en la tabla de posiciones. */
 .link-name {
-  border: none;
-  background: none;
-  padding: 0;
-  font: inherit;
   font-weight: 600;
   color: var(--primary);
-  cursor: pointer;
-  text-align: left;
 }
 
-.link-name:hover {
+.clickable-row {
+  cursor: pointer;
+}
+
+.clickable-row:hover td {
+  background: var(--bg);
+}
+
+.clickable-row:hover .link-name {
   text-decoration: underline;
 }
 
@@ -1233,6 +1235,99 @@ select:focus {
 .bracket-num {
   font-weight: 700;
   color: var(--primary);
+}
+
+/* Bracket de eliminatorias en tarjetas (sin scroll horizontal). */
+.bracket {
+  display: flex;
+  flex-direction: column;
+  gap: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+.bk-round-title {
+  display: inline-block;
+  margin: 0 0 0.55rem;
+  font-size: 0.78rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--primary-dark);
+  background: #eef2ff;
+  padding: 0.2rem 0.65rem;
+  border-radius: 999px;
+}
+
+.bk-cards {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.55rem;
+}
+
+@media (min-width: 540px) {
+  .bk-cards {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+.bk-card {
+  width: 100%;
+  text-align: left;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--card);
+  padding: 0.45rem 0.65rem;
+  font: inherit;
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.04);
+}
+
+.bk-card:hover {
+  border-color: var(--primary);
+}
+
+.bk-card.placeholder {
+  cursor: default;
+  background: var(--bg);
+  border-style: dashed;
+  box-shadow: none;
+}
+
+.bk-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  padding: 0.28rem 0;
+  font-weight: 600;
+  font-size: 0.92rem;
+}
+
+.bk-row + .bk-row {
+  border-top: 1px dashed var(--border);
+}
+
+.bk-row.winner {
+  color: var(--success);
+}
+
+.bk-row.tbd {
+  color: var(--muted);
+  font-weight: 500;
+  font-size: 0.85rem;
+}
+
+.bk-score {
+  font-weight: 800;
+  min-width: 1.1rem;
+  text-align: right;
+  font-variant-numeric: tabular-nums;
+}
+
+.bk-meta {
+  margin-top: 0.3rem;
+  font-size: 0.7rem;
+  color: var(--muted);
 }
 
 /* Modal de reglas */
