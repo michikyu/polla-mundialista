@@ -1,10 +1,15 @@
-Arqueros del mini-juego de penaltis (se abre tocando el reloj).
+Stickers del mini-juego "Tiro al arco" (se abre tocando el reloj).
 
-Pon aquí tus 3 stickers con EXACTAMENTE estos nombres:
+Pon aquí tus stickers con estos nombres EXACTOS (los que tengas, de 1 en adelante):
   - keeper1.png
   - keeper2.png
-  - keeper3.png
+  - ... hasta keeper14.png
 
-Recomendado: PNG con fondo transparente, ~512x512.
-El juego elige uno al azar como arquero en cada tiro.
-Si falta alguno, se usa un emoji 🧤 de respaldo (el juego igual funciona).
+El juego los usa como blancos que aparecen en el arco al azar.
+Recomendado: imagen cuadrada, ~512x512 (PNG; .webp renombrado a .png también sirve).
+Si no hay ninguno, se usan emojis de respaldo (el juego igual funciona).
+
+NOTA DE PRIVACIDAD: estas imágenes NO se suben al repo público de GitHub
+(están en .gitignore). Sí llegan al sitio en vivo porque el deploy por CLI
+(vercel deploy) sube los archivos locales. Así las caras de tus amigos no
+quedan públicas en GitHub, pero el juego sí las muestra en la página.

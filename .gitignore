@@ -15,3 +15,9 @@ data/*.db-shm
 
 # Artefacto de build de la API (se genera con npm run build)
 api/index.mjs
+
+# Stickers del mini-juego: fotos de amigos, NO subir al repo público.
+# Llegan al sitio en vivo vía CLI deploy (no están en .vercelignore).
+public/keepers/*
+!public/keepers/README.txt
+

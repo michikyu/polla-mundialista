@@ -209,7 +209,7 @@ export function App() {
           <button
             className="colombia-time clock-game"
             onClick={() => setShowGame(true)}
-            title="Hora en Colombia (UTC-5) · ¡toca para jugar penaltis! ⚽"
+            title="Hora en Colombia (UTC-5) · ¡toca para jugar tiro al arco! ⚽"
           >
             🕐 {colombiaTime} · Colombia
           </button>

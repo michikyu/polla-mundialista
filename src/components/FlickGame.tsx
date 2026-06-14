@@ -1,8 +1,8 @@
 import { useEffect, useRef, useState } from 'react';
 
-// Stickers como blancos: public/keepers/keeper1.png … keeper7.png (los que existan).
+// Stickers como blancos: public/keepers/keeper1.png … keeper14.png (los que existan).
 // Si no hay ninguno, se usan emojis de respaldo.
-const STICKER_PATHS = Array.from({ length: 7 }, (_, i) => `/keepers/keeper${i + 1}.png`);
+const STICKER_PATHS = Array.from({ length: 14 }, (_, i) => `/keepers/keeper${i + 1}.png`);
 const FALLBACK_EMOJI = ['😎', '🧤', '🥅', '🔥', '🎯', '🙌', '🤡'];
 
 const W = 360;
