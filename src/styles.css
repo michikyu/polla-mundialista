@@ -1317,6 +1317,18 @@ select:focus {
   font-size: 0.66rem;
 }
 
+.bk-tbd3 {
+  display: inline-flex;
+  flex-direction: column;
+  line-height: 1.05;
+}
+
+.bk-tbd-groups {
+  font-size: 0.82em;
+  opacity: 0.65;
+  letter-spacing: 0.02em;
+}
+
 .bk-tree .team {
   gap: 0.18rem;
   overflow: hidden;

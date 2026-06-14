@@ -88,7 +88,7 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
   const [error, setError] = useState('');
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
-  const [groupFilter, setGroupFilter] = useState<'todos' | string>('todos');
+  const [view, setView] = useState<'todos' | 'grupos' | 'terceros' | 'eliminatorias'>('todos');
 
   useEffect(() => {
     api.getMatches().then(setMatches).catch((err: Error) => setError(err.message));
@@ -145,18 +145,19 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
         </p>
         {syncMessage && <p className="muted hint">{syncMessage}</p>}
         <label className="select-label stage-filter">
-          Filtrar por grupo
-          <select value={groupFilter} onChange={(e) => setGroupFilter(e.target.value)}>
-            <option value="todos">Todos los grupos</option>
-            {GROUP_LABELS.map((g) => (
-              <option key={g} value={g}>Grupo {g}</option>
-            ))}
+          Ver
+          <select value={view} onChange={(e) => setView(e.target.value as typeof view)}>
+            <option value="todos">Todo</option>
+            <option value="grupos">Grupos</option>
+            <option value="terceros">Mejores terceros</option>
+            <option value="eliminatorias">Eliminatorias</option>
           </select>
         </label>
       </section>
 
+      {(view === 'todos' || view === 'grupos') && (
       <div className="groups-grid">
-        {(groupFilter === 'todos' ? GROUP_LABELS : [groupFilter]).map((group) => (
+        {GROUP_LABELS.map((group) => (
           <section key={group} className="card group-card">
             <h3 className="day-title">Grupo {group}</h3>
             <table className="table group-table">
@@ -190,7 +191,9 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
           </section>
         ))}
       </div>
+      )}
 
+      {(view === 'todos' || view === 'terceros') && (
       <section className="card">
         <h2>🥉 Mejores terceros</h2>
         <p className="muted hint">Los 8 primeros de esta lista (verde) también avanzan a dieciseisavos.</p>
@@ -223,15 +226,18 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
           </table>
         </div>
       </section>
+      )}
 
+      {(view === 'todos' || view === 'eliminatorias') && (
       <section className="card">
         <h2>🏆 Eliminatorias</h2>
         <p className="muted hint">
           Bracket oficial de la FIFA. Cada ronda se llena sola con los clasificados cuando se actualizan
           los resultados; P73…P104 es el número oficial de cada partido.
         </p>
-        <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} />
+        <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} mode="tree" />
       </section>
+      )}
     </div>
   );
 }

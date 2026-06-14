@@ -147,7 +147,7 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
       {matches.some((m) => m.stage !== 'grupos') && (
         <section className="card">
           <h2>🏆 Eliminatorias</h2>
-          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} onlyReal showFilter={false} />
+          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} onlyReal mode="list" />
         </section>
       )}
 
