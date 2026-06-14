@@ -5,7 +5,7 @@ import { asId } from './validate';
 // La contraseña de administrador viene de la variable de entorno ADMIN_PASSWORD.
 // En producción DEBES configurarla (Vercel → Settings → Environment Variables).
 // Si no está, usa un valor de marcador para desarrollo local — cámbialo.
-const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'changeme';
+export const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD ?? 'changeme';
 
 export function isAdminPassword(provided: string | undefined): boolean {
   return provided === ADMIN_PASSWORD;

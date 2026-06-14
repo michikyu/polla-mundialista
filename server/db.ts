@@ -77,6 +77,15 @@ async function init(): Promise<void> {
       value TEXT
     )
   `);
+  await db.execute(`
+    CREATE TABLE IF NOT EXISTS webauthn_credentials (
+      id TEXT PRIMARY KEY,
+      public_key TEXT NOT NULL,
+      counter INTEGER NOT NULL DEFAULT 0,
+      transports TEXT,
+      created_at TEXT
+    )
+  `);
   await migrate();
   await seedIfEmpty();
 }

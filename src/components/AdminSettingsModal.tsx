@@ -1,4 +1,5 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
+import { startRegistration } from '@simplewebauthn/browser';
 import { api, type AppSettings } from '../api';
 import type { ScoringConfig } from '../../shared/scoring';
 
@@ -8,6 +9,7 @@ interface Props {
   footballConfigured: boolean;
   currentScoring: ScoringConfig;
   onSaved: (settings: AppSettings) => void;
+  onPasskeyRegistered: () => void;
   onClose: () => void;
 }
 
@@ -17,6 +19,7 @@ export function AdminSettingsModal({
   footballConfigured,
   currentScoring,
   onSaved,
+  onPasskeyRegistered,
   onClose,
 }: Props) {
   const [title, setTitle] = useState(currentTitle);
@@ -26,7 +29,26 @@ export function AdminSettingsModal({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [backupMsg, setBackupMsg] = useState('');
+  const [passkeyMsg, setPasskeyMsg] = useState('');
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const handleRegisterPasskey = async () => {
+    setError('');
+    setPasskeyMsg('');
+    try {
+      const optionsJSON = await api.webauthnRegisterOptions();
+      const response = await startRegistration({ optionsJSON });
+      await api.webauthnRegisterVerify(response);
+      setPasskeyMsg('✅ Huella/passkey registrada. Ya puedes entrar con ella desde el candado.');
+      onPasskeyRegistered();
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      if (/abort|cancel|NotAllowed/i.test(msg)) {
+        return; // el usuario canceló el diálogo
+      }
+      setError('No se pudo registrar la huella/passkey: ' + msg);
+    }
+  };
 
   const handleDownload = async () => {
     setError('');
@@ -196,6 +218,20 @@ export function AdminSettingsModal({
             />
           </div>
           {backupMsg && <p className="muted hint">{backupMsg}</p>}
+        </div>
+
+        <div className="settings-backup">
+          <span className="settings-label">🔐 Huella / passkey (entrar sin contraseña)</span>
+          <span className="settings-help">
+            Registra la huella, Face ID o el PIN de <strong>este dispositivo</strong> para entrar como
+            admin sin escribir la contraseña. Repítelo en cada dispositivo que quieras usar.
+          </span>
+          <div className="row-actions">
+            <button type="button" className="btn" onClick={() => void handleRegisterPasskey()}>
+              🔐 Registrar huella/passkey
+            </button>
+          </div>
+          {passkeyMsg && <p className="muted hint">{passkeyMsg}</p>}
         </div>
       </div>
     </div>

@@ -1,4 +1,6 @@
 import { useEffect, useState } from 'react';
+import { startAuthentication } from '@simplewebauthn/browser';
+import type { Participant } from '../shared/types';
 import { api, clearStoredPassword, setStoredPassword, getParticipantAuth } from './api';
 import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
@@ -48,6 +50,8 @@ export function App() {
   const [telegramLink, setTelegramLink] = useState('');
   const [footballConfigured, setFootballConfigured] = useState(false);
   const [scoring, setScoring] = useState<ScoringConfig>(DEFAULT_SCORING);
+  const [passkeyEnabled, setPasskeyEnabled] = useState(false);
+  const [participants, setParticipants] = useState<Participant[]>([]);
   const [colombiaTime, setColombiaTime] = useState(getColombiaTime);
   const [participantId, setParticipantId] = useState<number | null>(() => {
     const saved = Number(localStorage.getItem(PARTICIPANT_KEY));
@@ -69,6 +73,7 @@ export function App() {
         setTelegramLink(s.telegram_link ?? '');
         setFootballConfigured(s.football_configured);
         setScoring(s.scoring);
+        setPasskeyEnabled(s.passkey_enabled);
       })
       .catch(() => {});
   }, []);
@@ -78,6 +83,11 @@ export function App() {
       .getAuthStatus()
       .then((status) => setIsAdmin(status.admin))
       .catch(() => {});
+  }, []);
+
+  // Para mostrar el nombre de quien tiene sesión de participante.
+  useEffect(() => {
+    api.getParticipants().then(setParticipants).catch(() => {});
   }, []);
 
   useEffect(() => {
@@ -135,6 +145,30 @@ export function App() {
     }
   };
 
+  const handlePasskeyLogin = async () => {
+    try {
+      const optionsJSON = await api.webauthnLoginOptions();
+      const response = await startAuthentication({ optionsJSON });
+      const result = await api.webauthnLoginVerify(response);
+      if (result.verified) {
+        setStoredPassword(result.adminPassword);
+        setIsAdmin(true);
+      }
+    } catch (err) {
+      const msg = (err as Error).message || '';
+      // Si el usuario cancela el diálogo de huella, no mostramos error.
+      if (!/abort|cancel|NotAllowed/i.test(msg)) {
+        window.alert('No se pudo entrar con la huella/passkey.');
+      }
+    }
+  };
+
+  // Etiqueta de la sesión actual (admin / participante / invitado).
+  const participantAuth = getParticipantAuth();
+  const sessionParticipant = participantAuth
+    ? participants.find((p) => p.id === participantAuth.id)
+    : undefined;
+
   return (
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
@@ -157,6 +191,17 @@ export function App() {
           <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
             🕐 {colombiaTime} · Colombia
           </span>
+          {isAdmin ? (
+            <span className="session-chip session-admin" title="Tienes sesión de administrador">
+              🔓 Admin
+            </span>
+          ) : sessionParticipant ? (
+            <span className="session-chip" title="Tu sesión de participante">
+              👤 {sessionParticipant.name}
+            </span>
+          ) : (
+            <span className="session-chip session-guest" title="Solo lectura">👀 Invitado</span>
+          )}
           <button
             className="clock-rules"
             onClick={() => setShowRules(true)}
@@ -215,6 +260,15 @@ export function App() {
               ⚙️ Configuración
             </button>
           )}
+          {!isAdmin && passkeyEnabled && (
+            <button
+              className="admin-config"
+              onClick={() => void handlePasskeyLogin()}
+              title="Entrar como admin con tu huella/Face ID/passkey"
+            >
+              🔐 Huella
+            </button>
+          )}
           <button
             className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
             onClick={() => void handleLockClick()}
@@ -239,6 +293,7 @@ export function App() {
             setFootballConfigured(s.football_configured);
             setScoring(s.scoring);
           }}
+          onPasskeyRegistered={() => setPasskeyEnabled(true)}
           onClose={() => setShowSettings(false)}
         />
       )}

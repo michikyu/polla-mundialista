@@ -1,11 +1,18 @@
 import type { Match, MatchDetail, Participant, Prediction, StandingRow } from '../shared/types';
 import type { ScoringConfig } from '../shared/scoring';
+import type {
+  PublicKeyCredentialCreationOptionsJSON,
+  PublicKeyCredentialRequestOptionsJSON,
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+} from '@simplewebauthn/browser';
 
 export interface AppSettings {
   title: string | null;
   telegram_link: string | null;
   football_configured: boolean;
   scoring: ScoringConfig;
+  passkey_enabled: boolean;
 }
 
 const PASSWORD_KEY = 'polla-admin-password';
@@ -128,6 +135,22 @@ export const api = {
     request<AppSettings>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
+    }),
+
+  // Passkey / huella (WebAuthn) — solo admin.
+  webauthnRegisterOptions: () =>
+    request<PublicKeyCredentialCreationOptionsJSON>('/api/webauthn/register/options', { method: 'POST' }),
+  webauthnRegisterVerify: (response: RegistrationResponseJSON) =>
+    request<{ verified: boolean }>('/api/webauthn/register/verify', {
+      method: 'POST',
+      body: JSON.stringify(response),
+    }),
+  webauthnLoginOptions: () =>
+    request<PublicKeyCredentialRequestOptionsJSON>('/api/webauthn/login/options', { method: 'POST' }),
+  webauthnLoginVerify: (response: AuthenticationResponseJSON) =>
+    request<{ verified: boolean; adminPassword: string }>('/api/webauthn/login/verify', {
+      method: 'POST',
+      body: JSON.stringify(response),
     }),
 
   syncResults: () =>

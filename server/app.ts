@@ -11,6 +11,7 @@ import { syncRouter } from './routes/sync';
 import { notifyRouter } from './routes/notify';
 import { settingsRouter } from './routes/settings';
 import { backupRouter } from './routes/backup';
+import { webauthnRouter } from './routes/webauthn';
 
 export const app = express();
 
@@ -29,10 +30,14 @@ app.use(async (_req, _res, next) => {
 app.use('/api/auth', authRouter);
 
 // Lectura libre para todos; cualquier cambio exige la contraseña de administrador.
-// Excepción: guardar predicciones, que también acepta la contraseña personal del
-// participante (la valida la propia ruta).
+// Excepciones públicas: guardar predicciones (valida contraseña del participante) y
+// el login con passkey (su propósito es entrar sin contraseña).
 app.use('/api', (req, res, next) => {
-  if (req.method === 'GET' || (req.method === 'PUT' && req.path === '/predictions')) {
+  if (
+    req.method === 'GET' ||
+    (req.method === 'PUT' && req.path === '/predictions') ||
+    (req.method === 'POST' && req.path.startsWith('/webauthn/login'))
+  ) {
     next();
     return;
   }
@@ -47,6 +52,7 @@ app.use('/api/sync-results', syncRouter);
 app.use('/api/notify', notifyRouter);
 app.use('/api/settings', settingsRouter);
 app.use('/api/backup', backupRouter);
+app.use('/api/webauthn', webauthnRouter);
 
 // Si el frontend fue compilado (npm run build), servirlo directamente (modo local).
 const distDir = path.join(import.meta.dirname, '..', 'dist');

@@ -30,7 +30,7 @@ export async function getScoringConfig(): Promise<ScoringConfig> {
   return Object.fromEntries(entries) as unknown as ScoringConfig;
 }
 
-async function setSetting(key: string, value: string): Promise<void> {
+export async function setSetting(key: string, value: string): Promise<void> {
   await db.execute({
     sql: `INSERT INTO settings (key, value) VALUES (?, ?)
           ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
@@ -41,17 +41,19 @@ async function setSetting(key: string, value: string): Promise<void> {
 // GET público: solo datos NO secretos (título y link del grupo). Del token de
 // football-data solo se informa si está configurado, nunca su valor.
 settingsRouter.get('/', async (_req, res) => {
-  const [title, telegramLink, footballToken, scoring] = await Promise.all([
+  const [title, telegramLink, footballToken, scoring, passkeys] = await Promise.all([
     getSetting('title'),
     getSetting('telegram_link'),
     getSetting('football_token'),
     getScoringConfig(),
+    db.execute('SELECT COUNT(*) AS n FROM webauthn_credentials'),
   ]);
   res.json({
     title,
     telegram_link: telegramLink,
     football_configured: Boolean(footballToken) || Boolean(process.env.FOOTBALL_DATA_TOKEN),
     scoring,
+    passkey_enabled: Number(passkeys.rows[0]?.n ?? 0) > 0,
   });
 });
 

@@ -92,7 +92,30 @@ body {
   justify-content: center;
   align-items: center;
   gap: 0.5rem;
+  flex-wrap: wrap;
   margin-bottom: 0.6rem;
+}
+
+/* Chip que indica la sesión actual (admin / participante / invitado). */
+.session-chip {
+  font-size: 0.7rem;
+  font-weight: 600;
+  padding: 0.12rem 0.5rem;
+  border-radius: 999px;
+  background: #eef2ff;
+  color: var(--primary-dark);
+  white-space: nowrap;
+}
+
+.session-chip.session-admin {
+  background: #dcfce7;
+  color: var(--success);
+}
+
+.session-chip.session-guest {
+  background: var(--bg);
+  color: var(--muted);
+  font-weight: 500;
 }
 
 .colombia-time {
