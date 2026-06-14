@@ -1,0 +1,170 @@
+import { db } from './db';
+import { kickoffTimestamp } from '../shared/time';
+import { calculatePoints, isExactHit } from '../shared/scoring';
+import { computeStandings } from './standingsCalc';
+import type { Match } from '../shared/types';
+
+const APP_URL = 'https://polla-moachos.vercel.app';
+// Ventana para el aviso previo: avisa si el partido empieza dentro de los próximos 45 min.
+const PREMATCH_WINDOW_MS = 45 * 60_000;
+
+const bogotaTime = new Intl.DateTimeFormat('es-CO', {
+  timeZone: 'America/Bogota',
+  hour: 'numeric',
+  minute: '2-digit',
+  hour12: true,
+});
+
+// Envía un mensaje al grupo. Devuelve false si falta configurar el bot (no rompe nada).
+export async function sendTelegram(text: string): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!token || !chatId) {
+    return false;
+  }
+  try {
+    const response = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: chatId, text, disable_web_page_preview: true }),
+    });
+    return response.ok;
+  } catch {
+    return false;
+  }
+}
+
+// Aviso previo: partidos que empiezan pronto y a quién le falta predicción.
+export async function sendPrematchAlerts(): Promise<number> {
+  const now = Date.now();
+  const matchesResult = await db.execute("SELECT * FROM matches WHERE status != 'finalizado'");
+  const upcoming = (matchesResult.rows as unknown as Match[]).filter((match) => {
+    const diff = kickoffTimestamp(match.kickoff) - now;
+    return diff > 0 && diff <= PREMATCH_WINDOW_MS;
+  });
+  if (upcoming.length === 0) {
+    return 0;
+  }
+
+  const notifiedResult = await db.execute("SELECT match_id FROM notifications WHERE kind = 'previa'");
+  const notified = new Set(notifiedResult.rows.map((row) => Number(row.match_id)));
+
+  let sent = 0;
+  for (const match of upcoming) {
+    if (notified.has(match.id)) {
+      continue;
+    }
+    const missingResult = await db.execute({
+      sql: `
+        SELECT p.name FROM participants p
+        WHERE NOT EXISTS (
+          SELECT 1 FROM predictions pr WHERE pr.participant_id = p.id AND pr.match_id = ?
+        )
+        ORDER BY p.name COLLATE NOCASE
+      `,
+      args: [match.id],
+    });
+    const missing = missingResult.rows.map((row) => String(row.name));
+    const hora = bogotaTime.format(new Date(kickoffTimestamp(match.kickoff)));
+
+    const text = [
+      `⚽ ¡Ya casi! ${match.home_team} vs ${match.away_team}`,
+      `🕐 Hoy a las ${hora} (hora Colombia)${match.venue ? ` · ${match.venue}` : ''}`,
+      missing.length > 0
+        ? `🙈 Sin predicción: ${missing.join(', ')}\n📝 Corre a ponerla: ${APP_URL}`
+        : '✅ ¡Todos ya pusieron su predicción! 🎉',
+    ].join('\n');
+
+    if (await sendTelegram(text)) {
+      await db.execute({
+        sql: "INSERT INTO notifications (match_id, kind, sent_at) VALUES (?, 'previa', ?)",
+        args: [match.id, new Date().toISOString()],
+      });
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
+interface FinishedPredRow {
+  participant_id: number;
+  name: string;
+  home_goals: number;
+  away_goals: number;
+}
+
+const MEDALS = ['🥇', '🥈', '🥉'];
+
+// Aviso de resultado: cuando un partido termina, marcador + puntos ganados y tabla actualizada.
+export async function sendResultAlerts(): Promise<number> {
+  const matchesResult = await db.execute(
+    "SELECT * FROM matches WHERE status = 'finalizado' AND home_score IS NOT NULL AND away_score IS NOT NULL",
+  );
+  const finished = matchesResult.rows as unknown as Match[];
+  if (finished.length === 0) {
+    return 0;
+  }
+
+  const notifiedResult = await db.execute("SELECT match_id FROM notifications WHERE kind = 'resultado'");
+  const notified = new Set(notifiedResult.rows.map((row) => Number(row.match_id)));
+  const pending = finished.filter((m) => !notified.has(m.id));
+  if (pending.length === 0) {
+    return 0;
+  }
+
+  let sent = 0;
+  for (const match of pending) {
+    const homeScore = match.home_score as number;
+    const awayScore = match.away_score as number;
+
+    // Predicciones de este partido para calcular los puntos ganados por cada quien.
+    const predsResult = await db.execute({
+      sql: `
+        SELECT p.id AS participant_id, p.name, pr.home_goals, pr.away_goals
+        FROM predictions pr
+        JOIN participants p ON p.id = pr.participant_id
+        WHERE pr.match_id = ?
+      `,
+      args: [match.id],
+    });
+    const preds = predsResult.rows as unknown as FinishedPredRow[];
+
+    const exactHitsInMatch = preds.filter((row) =>
+      isExactHit(row.home_goals, row.away_goals, homeScore, awayScore),
+    ).length;
+    const pointsByParticipant = new Map<number, number>();
+    for (const row of preds) {
+      pointsByParticipant.set(
+        row.participant_id,
+        calculatePoints(row.home_goals, row.away_goals, homeScore, awayScore, exactHitsInMatch),
+      );
+    }
+
+    // Tabla actualizada (ya incluye este partido porque está finalizado en la BD).
+    const standings = await computeStandings();
+    const tableLines = standings.map((row, index) => {
+      const rank = MEDALS[index] ?? `${index + 1}.`;
+      const gained = pointsByParticipant.get(row.participant_id);
+      const delta = gained === undefined ? '' : ` (+${gained})`;
+      return `${rank} ${row.name} — ${row.points} pts${delta}`;
+    });
+
+    const text = [
+      `✅ Final: ${match.home_team} ${homeScore} - ${awayScore} ${match.away_team}`,
+      '',
+      '📊 Tabla actualizada:',
+      ...tableLines,
+      '',
+      `Detalles: ${APP_URL}`,
+    ].join('\n');
+
+    if (await sendTelegram(text)) {
+      await db.execute({
+        sql: "INSERT INTO notifications (match_id, kind, sent_at) VALUES (?, 'resultado', ?)",
+        args: [match.id, new Date().toISOString()],
+      });
+      sent += 1;
+    }
+  }
+  return sent;
+}

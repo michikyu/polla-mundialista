@@ -1,0 +1,17 @@
+node_modules/
+dist/
+data/*.db
+data/*.db-wal
+data/*.db-shm
+
+# Secretos y entorno (NUNCA subir a Git)
+.env
+.env*.local
+.cron-secret.local
+.vercel
+
+# Datos de sesión de Claude Code
+.claude/
+
+# Artefacto de build de la API (se genera con npm run build)
+api/index.mjs
