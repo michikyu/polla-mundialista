@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Match, Participant, Prediction } from '../../shared/types';
-import { api, getParticipantAuth, setParticipantAuth } from '../api';
+import { api, setParticipantAuth } from '../api';
 import { formatDayLabel, groupByDay } from '../format';
 import { PredictionRow } from '../components/PredictionRow';
 
@@ -8,13 +8,20 @@ interface Props {
   isAdmin: boolean;
   participantId: number | null;
   onSelectParticipant: (id: number | null) => void;
+  unlockedId: number | null;
+  onUnlockedChange: (id: number | null) => void;
 }
 
-export function PredictionsView({ isAdmin, participantId, onSelectParticipant }: Props) {
+export function PredictionsView({
+  isAdmin,
+  participantId,
+  onSelectParticipant,
+  unlockedId,
+  onUnlockedChange,
+}: Props) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
   const [predictions, setPredictions] = useState<Prediction[]>([]);
-  const [unlockedId, setUnlockedId] = useState<number | null>(() => getParticipantAuth()?.id ?? null);
   const [showPast, setShowPast] = useState(false);
   const [error, setError] = useState('');
 
@@ -52,7 +59,7 @@ export function PredictionsView({ isAdmin, participantId, onSelectParticipant }:
       const result = await api.checkParticipantPassword(selected.id, password);
       if (result.ok) {
         setParticipantAuth({ id: selected.id, password });
-        setUnlockedId(selected.id);
+        onUnlockedChange(selected.id);
       } else {
         window.alert('Contraseña incorrecta.');
       }

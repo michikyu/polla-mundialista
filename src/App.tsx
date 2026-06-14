@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import type { Participant } from '../shared/types';
-import { api, clearStoredPassword, getParticipantAuth } from './api';
+import { api, clearStoredPassword, getParticipantAuth, clearParticipantAuth } from './api';
 import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
@@ -53,6 +53,9 @@ export function App() {
   const [scoring, setScoring] = useState<ScoringConfig>(DEFAULT_SCORING);
   const [passkeyEnabled, setPasskeyEnabled] = useState(false);
   const [participants, setParticipants] = useState<Participant[]>([]);
+  const [participantAuthId, setParticipantAuthId] = useState<number | null>(
+    () => getParticipantAuth()?.id ?? null,
+  );
   const [colombiaTime, setColombiaTime] = useState(getColombiaTime);
   const [participantId, setParticipantId] = useState<number | null>(() => {
     const saved = Number(localStorage.getItem(PARTICIPANT_KEY));
@@ -133,11 +136,17 @@ export function App() {
     setShowLogin(true);
   };
 
+  const handleParticipantSignOut = () => {
+    const name = participants.find((p) => p.id === participantAuthId)?.name ?? 'tu sesión';
+    if (window.confirm(`¿Cerrar sesión de ${name}?`)) {
+      clearParticipantAuth();
+      setParticipantAuthId(null);
+    }
+  };
+
   // Etiqueta de la sesión actual (admin / participante / invitado).
-  const participantAuth = getParticipantAuth();
-  const sessionParticipant = participantAuth
-    ? participants.find((p) => p.id === participantAuth.id)
-    : undefined;
+  const sessionParticipant =
+    participantAuthId !== null ? participants.find((p) => p.id === participantAuthId) : undefined;
 
   return (
     <div className="app">
@@ -172,13 +181,21 @@ export function App() {
             🕐 {colombiaTime} · Colombia
           </span>
           {isAdmin ? (
-            <span className="session-chip session-admin" title="Tienes sesión de administrador">
-              🔓 Admin
-            </span>
+            <button
+              className="session-chip session-admin"
+              onClick={handleLockClick}
+              title="Cerrar sesión de administrador"
+            >
+              🔓 Admin · salir
+            </button>
           ) : sessionParticipant ? (
-            <span className="session-chip" title="Tu sesión de participante">
-              👤 {sessionParticipant.name}
-            </span>
+            <button
+              className="session-chip"
+              onClick={handleParticipantSignOut}
+              title="Cerrar sesión"
+            >
+              👤 {sessionParticipant.name} · salir
+            </button>
           ) : (
             <span className="session-chip session-guest" title="Solo lectura">👀 Invitado</span>
           )}
@@ -208,7 +225,13 @@ export function App() {
         {view === 'dashboard' && <DashboardView onOpenMatch={openMatch} onOpenParticipant={openParticipant} />}
         {view === 'matches' && <MatchesView onOpenMatch={openMatch} isAdmin={isAdmin} />}
         {view === 'predictions' && (
-          <PredictionsView isAdmin={isAdmin} participantId={participantId} onSelectParticipant={selectParticipant} />
+          <PredictionsView
+            isAdmin={isAdmin}
+            participantId={participantId}
+            onSelectParticipant={selectParticipant}
+            unlockedId={participantAuthId}
+            onUnlockedChange={setParticipantAuthId}
+          />
         )}
         {view === 'standings' && <StandingsView isAdmin={isAdmin} />}
         {view === 'mundial' && <MundialView onOpenMatch={openMatch} isAdmin={isAdmin} />}
@@ -217,7 +240,7 @@ export function App() {
         )}
       </main>
       <footer className="app-footer">
-        {telegramLink && (isAdmin || getParticipantAuth() !== null) && (
+        {telegramLink && (isAdmin || participantAuthId !== null) && (
           <a className="telegram-cta" href={telegramLink} target="_blank" rel="noopener noreferrer">
             💬 Unirse al grupo de Telegram
           </a>

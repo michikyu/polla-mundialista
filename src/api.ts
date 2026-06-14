@@ -52,6 +52,10 @@ export function setParticipantAuth(auth: ParticipantAuth): void {
   localStorage.setItem(PARTICIPANT_AUTH_KEY, JSON.stringify(auth));
 }
 
+export function clearParticipantAuth(): void {
+  localStorage.removeItem(PARTICIPANT_AUTH_KEY);
+}
+
 async function request<T>(url: string, options?: RequestInit): Promise<T> {
   const headers: Record<string, string> = { 'Content-Type': 'application/json' };
   const password = getStoredPassword();
