@@ -89,6 +89,7 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
   const [syncing, setSyncing] = useState(false);
   const [syncMessage, setSyncMessage] = useState('');
   const [view, setView] = useState<'todos' | 'grupos' | 'terceros' | 'eliminatorias'>('todos');
+  const [showThirdsRule, setShowThirdsRule] = useState(false);
 
   useEffect(() => {
     api.getMatches().then(setMatches).catch((err: Error) => setError(err.message));
@@ -195,8 +196,25 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
 
       {(view === 'todos' || view === 'terceros') && (
       <section className="card">
-        <h2>🥉 Mejores terceros</h2>
+        <h2>
+          🥉 Mejores terceros{' '}
+          <button
+            className="info-btn"
+            onClick={() => setShowThirdsRule((v) => !v)}
+            aria-label="Cómo se eligen los mejores terceros"
+            title="¿Cómo se eligen?"
+          >
+            ⓘ
+          </button>
+        </h2>
         <p className="muted hint">Los 8 primeros de esta lista (verde) también avanzan a dieciseisavos.</p>
+        {showThirdsRule && (
+          <p className="muted hint">
+            De los 12 terceros avanzan los 8 mejores, ordenados por: <strong>1)</strong> más puntos ·{' '}
+            <strong>2)</strong> mejor diferencia de gol · <strong>3)</strong> más goles a favor. (La FIFA
+            desempata luego por fair-play y sorteo; aquí, como último criterio, va el orden alfabético.)
+          </p>
+        )}
         <div className="table-wrap">
           <table className="table">
             <thead>

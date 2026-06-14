@@ -1147,6 +1147,16 @@ select:focus {
   padding: 0 !important;
 }
 
+.info-btn {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font-size: 0.95rem;
+  color: var(--primary);
+  padding: 0 0.1rem;
+  vertical-align: middle;
+}
+
 .handicap-mark {
   color: var(--accent);
   font-size: 0.7rem;
