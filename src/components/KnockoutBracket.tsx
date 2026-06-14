@@ -144,12 +144,27 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, mode =
           </div>
         ))}
       </div>
-      {availableStages.includes('tercer_puesto') && (
-        <div className="bk-third">
-          <h3 className="bk-stage-name">{STAGE_LABELS.tercer_puesto}</h3>
-          <div className="bk-cards">{cardsFor('tercer_puesto', false)}</div>
-        </div>
-      )}
+      {availableStages.includes('tercer_puesto') &&
+        (() => {
+          const real = realByStage.get('tercer_puesto') ?? [];
+          const slot = KNOCKOUT_BRACKET.find((s) => s.stage === 'tercer_puesto');
+          return (
+            <div className="bk-third">
+              <h3 className="bk-stage-name">🥉 Tercer puesto</h3>
+              <div className="bk-cards">
+                {real.length > 0
+                  ? matchCard(real[0], false)
+                  : slot && (
+                      <div className="bk-card placeholder" title="Los dos perdedores de las semifinales">
+                        <div className="bk-row tbd">Perdedor semifinal 1</div>
+                        <div className="bk-row tbd">Perdedor semifinal 2</div>
+                        <div className="bk-meta">{formatKickoff(slot.kickoff)}</div>
+                      </div>
+                    )}
+              </div>
+            </div>
+          );
+        })()}
     </div>
   );
 }
