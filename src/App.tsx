@@ -8,6 +8,7 @@ import { RulesModal } from './components/RulesModal';
 import { LoginModal } from './components/LoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { ParticipantProgressModal } from './components/ParticipantProgressModal';
+import { PenaltyGame } from './components/PenaltyGame';
 import { DEFAULT_SCORING, type ScoringConfig } from '../shared/scoring';
 import { SplashScreen } from './components/SplashScreen';
 import { DashboardView } from './views/DashboardView';
@@ -51,6 +52,7 @@ export function App() {
   const [showLogin, setShowLogin] = useState(false);
   const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
   const [showMyProgress, setShowMyProgress] = useState(false);
+  const [showGame, setShowGame] = useState(false);
   const [title, setTitle] = useState(APP_TITLE);
   const [telegramLink, setTelegramLink] = useState('');
   const [footballConfigured, setFootballConfigured] = useState(false);
@@ -165,6 +167,7 @@ export function App() {
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
       {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
+      {showGame && <PenaltyGame onClose={() => setShowGame(false)} />}
       {showLogin && (
         <LoginModal
           participants={participants}
@@ -203,9 +206,13 @@ export function App() {
           </h1>
         </div>
         <div className="header-clock">
-          <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
+          <button
+            className="colombia-time clock-game"
+            onClick={() => setShowGame(true)}
+            title="Hora en Colombia (UTC-5) · ¡toca para jugar penaltis! ⚽"
+          >
             🕐 {colombiaTime} · Colombia
-          </span>
+          </button>
           {!isAdmin && !sessionParticipant ? (
             <button
               className="session-chip session-guest"

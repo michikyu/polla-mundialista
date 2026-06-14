@@ -1147,6 +1147,111 @@ select:focus {
   padding: 0 !important;
 }
 
+/* Mini-juego de penaltis */
+.pg {
+  background: var(--card);
+  border-radius: 16px;
+  padding: 1rem 1.1rem 1.2rem;
+  max-width: 460px;
+  width: 100%;
+  box-shadow: 0 20px 50px rgb(15 23 42 / 0.3);
+}
+
+.pg-score {
+  display: flex;
+  justify-content: space-between;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  margin-bottom: 0.6rem;
+  flex-wrap: wrap;
+}
+
+.pg-pitch {
+  background: linear-gradient(#3aa757, #2f9e44);
+  border-radius: 12px;
+  padding: 0.8rem;
+}
+
+.pg-goal {
+  position: relative;
+  width: 100%;
+  aspect-ratio: 3 / 2;
+  border: 3px solid #fff;
+  border-radius: 6px;
+  background:
+    repeating-linear-gradient(90deg, transparent, transparent 11px, rgba(255, 255, 255, 0.18) 12px),
+    repeating-linear-gradient(0deg, transparent, transparent 11px, rgba(255, 255, 255, 0.18) 12px);
+  overflow: hidden;
+}
+
+.pg-keeper {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: left 0.4s ease, top 0.4s ease;
+  width: 30%;
+  display: flex;
+  justify-content: center;
+  pointer-events: none;
+}
+
+.pg-keeper img {
+  width: 100%;
+  height: auto;
+  filter: drop-shadow(0 2px 4px rgb(0 0 0 / 0.35));
+}
+
+.pg-keeper-emoji {
+  font-size: 3rem;
+}
+
+.pg-target {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  width: 19%;
+  aspect-ratio: 1;
+  border-radius: 50%;
+  border: 2px dashed rgba(255, 255, 255, 0.6);
+  background: rgba(255, 255, 255, 0.1);
+  cursor: pointer;
+}
+
+.pg-target:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.28);
+}
+
+.pg-target:disabled {
+  cursor: default;
+}
+
+.pg-ball {
+  position: absolute;
+  transform: translate(-50%, -50%);
+  transition: left 0.4s cubic-bezier(0.4, 0, 0.2, 1), top 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 1.7rem;
+  pointer-events: none;
+}
+
+.pg-msg {
+  text-align: center;
+  font-weight: 700;
+  font-size: 1.05rem;
+  min-height: 1.5rem;
+  margin: 0.7rem 0 0.2rem;
+}
+
+.pg-hint {
+  text-align: center;
+}
+
+.clock-game {
+  border: none;
+  background: none;
+  cursor: pointer;
+  font: inherit;
+  color: inherit;
+  padding: 0;
+}
+
 .info-btn {
   border: none;
   background: none;
