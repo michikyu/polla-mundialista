@@ -37,7 +37,9 @@ eliminatorias en vivo. Mobile-first, en español, **100 % gratis de hostear**.
 | Ganador o empate (sin marcador exacto) | **3** |
 | No acertó | **0** |
 
-A igual puntaje, queda primero quien **envió su predicción más temprano**.
+A igual puntaje, queda primero quien **envió su predicción más temprano**. El admin puede **cambiar
+estos valores** desde **⚙️ Configuración** (recalcula la tabla retroactivamente). Una vez que el
+partido empieza, **nadie —ni el admin— puede modificar** la predicción de un participante.
 
 ## 🚀 Despliega la tuya gratis (Vercel + Turso)
 

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { isAdminPassword, participantPasswordMatches } from '../auth';
 import { predictionsAreOpen } from '../matchStatus';
 import { calculatePoints } from '../../shared/scoring';
+import { getScoringConfig } from './settings';
 import { asGoals, asId } from '../validate';
 import type { Match, MatchStatus } from '../../shared/types';
 
@@ -59,6 +60,7 @@ predictionsRouter.get('/', async (req, res) => {
   // (con su contraseña) o el administrador ven los goles antes del inicio.
   const isAdmin = isAdminPassword(req.header('x-admin-password'));
   const isOwner = await participantPasswordMatches(participantId, req.header('x-participant-password'));
+  const scoring = await getScoringConfig();
 
   const predictions = rows.map((row) => {
     const matchLike = { kickoff: row.kickoff, status: row.status } as Match;
@@ -79,6 +81,7 @@ predictionsRouter.get('/', async (req, res) => {
             row.home_score as number,
             row.away_score as number,
             exactByMatch.get(row.match_id) ?? 0,
+            scoring,
           )
         : null,
     };

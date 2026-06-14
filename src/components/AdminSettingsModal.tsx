@@ -1,11 +1,13 @@
 import { useRef, useState, type ChangeEvent, type FormEvent } from 'react';
-import { api } from '../api';
+import { api, type AppSettings } from '../api';
+import type { ScoringConfig } from '../../shared/scoring';
 
 interface Props {
   currentTitle: string;
   currentTelegramLink: string;
   footballConfigured: boolean;
-  onSaved: (settings: { title: string | null; telegram_link: string | null; football_configured: boolean }) => void;
+  currentScoring: ScoringConfig;
+  onSaved: (settings: AppSettings) => void;
   onClose: () => void;
 }
 
@@ -13,12 +15,14 @@ export function AdminSettingsModal({
   currentTitle,
   currentTelegramLink,
   footballConfigured,
+  currentScoring,
   onSaved,
   onClose,
 }: Props) {
   const [title, setTitle] = useState(currentTitle);
   const [telegramLink, setTelegramLink] = useState(currentTelegramLink);
   const [footballToken, setFootballToken] = useState('');
+  const [scoring, setScoring] = useState<ScoringConfig>(currentScoring);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState('');
   const [backupMsg, setBackupMsg] = useState('');
@@ -68,9 +72,15 @@ export function AdminSettingsModal({
     setSaving(true);
     setError('');
     try {
-      const data: { title?: string; telegram_link?: string; football_token?: string } = {
+      const data: {
+        title?: string;
+        telegram_link?: string;
+        football_token?: string;
+        scoring?: ScoringConfig;
+      } = {
         title: title.trim(),
         telegram_link: telegramLink.trim(),
+        scoring,
       };
       if (footballToken.trim()) {
         data.football_token = footballToken.trim();
@@ -130,6 +140,33 @@ export function AdminSettingsModal({
               necesitas las variables <code>TELEGRAM_BOT_TOKEN</code> y <code>TELEGRAM_CHAT_ID</code> (ver README).
             </span>
           </label>
+
+          <div className="settings-field">
+            <span className="settings-label">🏆 Puntos por acierto</span>
+            <div className="scoring-grid">
+              {([
+                ['exactUnique', 'Exacto único'],
+                ['exactShared', 'Exacto repetido'],
+                ['outcome', 'Ganador/empate'],
+                ['miss', 'Fallo'],
+              ] as Array<[keyof ScoringConfig, string]>).map(([key, label]) => (
+                <label key={key} className="scoring-item">
+                  <span>{label}</span>
+                  <input
+                    type="number"
+                    min={0}
+                    max={99}
+                    value={scoring[key]}
+                    onChange={(e) => setScoring({ ...scoring, [key]: Number(e.target.value) })}
+                  />
+                </label>
+              ))}
+            </div>
+            <span className="settings-help">
+              ⚠️ Cambiar los puntos <strong>recalcula la tabla de todos retroactivamente</strong>. Lo ideal
+              es no tocarlos con el torneo en curso.
+            </span>
+          </div>
 
           {error && <p className="error">{error}</p>}
 

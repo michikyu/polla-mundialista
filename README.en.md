@@ -37,7 +37,9 @@ Mobile-first, **the UI is in Spanish**, and it's **100% free to host**.
 | Right winner or draw (not the exact score) | **3** |
 | Missed | **0** |
 
-On a points tie, whoever **submitted their prediction earliest** ranks higher.
+On a points tie, whoever **submitted their prediction earliest** ranks higher. The admin can **change
+these values** from **⚙️ Settings** (recalculates the table retroactively). Once a match kicks off,
+**nobody —not even the admin— can modify** a participant's prediction.
 
 ## 🚀 Deploy your own for free (Vercel + Turso)
 

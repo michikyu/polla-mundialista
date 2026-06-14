@@ -4,6 +4,7 @@ import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
+import { DEFAULT_SCORING, type ScoringConfig } from '../shared/scoring';
 import { SplashScreen } from './components/SplashScreen';
 import { DashboardView } from './views/DashboardView';
 import { MatchesView } from './views/MatchesView';
@@ -46,6 +47,7 @@ export function App() {
   const [title, setTitle] = useState(APP_TITLE);
   const [telegramLink, setTelegramLink] = useState('');
   const [footballConfigured, setFootballConfigured] = useState(false);
+  const [scoring, setScoring] = useState<ScoringConfig>(DEFAULT_SCORING);
   const [colombiaTime, setColombiaTime] = useState(getColombiaTime);
   const [participantId, setParticipantId] = useState<number | null>(() => {
     const saved = Number(localStorage.getItem(PARTICIPANT_KEY));
@@ -66,6 +68,7 @@ export function App() {
         }
         setTelegramLink(s.telegram_link ?? '');
         setFootballConfigured(s.football_configured);
+        setScoring(s.scoring);
       })
       .catch(() => {});
   }, []);
@@ -135,7 +138,7 @@ export function App() {
   return (
     <div className="app">
       {showSplash && <SplashScreen title={title} onDone={() => setShowSplash(false)} />}
-      {showRules && <RulesModal onClose={() => setShowRules(false)} />}
+      {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
       <header className="app-header">
         <div className="header-top">
           <h1>
@@ -227,12 +230,14 @@ export function App() {
           currentTitle={title}
           currentTelegramLink={telegramLink}
           footballConfigured={footballConfigured}
+          currentScoring={scoring}
           onSaved={(s) => {
             if (s.title) {
               setTitle(s.title);
             }
             setTelegramLink(s.telegram_link ?? '');
             setFootballConfigured(s.football_configured);
+            setScoring(s.scoring);
           }}
           onClose={() => setShowSettings(false)}
         />

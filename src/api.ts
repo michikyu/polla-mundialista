@@ -1,4 +1,12 @@
 import type { Match, MatchDetail, Participant, Prediction, StandingRow } from '../shared/types';
+import type { ScoringConfig } from '../shared/scoring';
+
+export interface AppSettings {
+  title: string | null;
+  telegram_link: string | null;
+  football_configured: boolean;
+  scoring: ScoringConfig;
+}
 
 const PASSWORD_KEY = 'polla-admin-password';
 const PARTICIPANT_AUTH_KEY = 'polla-participant-auth';
@@ -110,10 +118,14 @@ export const api = {
       { method: 'POST', body: JSON.stringify(data) },
     ),
 
-  getSettings: () =>
-    request<{ title: string | null; telegram_link: string | null; football_configured: boolean }>('/api/settings'),
-  updateSettings: (data: { title?: string; telegram_link?: string; football_token?: string }) =>
-    request<{ title: string | null; telegram_link: string | null; football_configured: boolean }>('/api/settings', {
+  getSettings: () => request<AppSettings>('/api/settings'),
+  updateSettings: (data: {
+    title?: string;
+    telegram_link?: string;
+    football_token?: string;
+    scoring?: Partial<ScoringConfig>;
+  }) =>
+    request<AppSettings>('/api/settings', {
       method: 'PUT',
       body: JSON.stringify(data),
     }),

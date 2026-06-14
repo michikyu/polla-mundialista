@@ -4,6 +4,7 @@ import { isAdminPassword } from '../auth';
 import { withEffectiveStatus } from '../matchStatus';
 import { sendResultAlerts } from '../notifier';
 import { calculatePoints, isExactHit } from '../../shared/scoring';
+import { getScoringConfig } from './settings';
 import { asTrimmedString, asGoals, asId, asStage } from '../validate';
 import type { Match, MatchDetail, MatchPredictionRow } from '../../shared/types';
 
@@ -62,6 +63,7 @@ matchesRouter.get('/:id', async (req, res) => {
   // Las predicciones de otros son secretas hasta que empiece el partido
   // (el administrador sí puede verlas).
   const hideGoals = match.status === 'pendiente' && !isAdminPassword(req.header('x-admin-password'));
+  const scoring = finished ? await getScoringConfig() : undefined;
 
   const predictions = rows.map((row) => {
     const hasPrediction = row.home_goals !== null && row.away_goals !== null;
@@ -78,6 +80,7 @@ matchesRouter.get('/:id', async (req, res) => {
               match.home_score as number,
               match.away_score as number,
               exactHitsInMatch,
+              scoring,
             )
           : null,
     };

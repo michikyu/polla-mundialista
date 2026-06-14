@@ -1,5 +1,6 @@
 import { db } from './db';
-import { calculatePoints, isExactHit, POINTS_OUTCOME } from '../shared/scoring';
+import { calculatePoints, isExactHit, isOutcomeHit } from '../shared/scoring';
+import { getScoringConfig } from './routes/settings';
 import type { StandingRow } from '../shared/types';
 
 interface ParticipantWithHandicap {
@@ -26,6 +27,7 @@ export async function computeStandings(): Promise<StandingRow[]> {
     'SELECT id, name, handicap FROM participants ORDER BY name COLLATE NOCASE',
   );
   const participants = participantsResult.rows as unknown as ParticipantWithHandicap[];
+  const scoring = await getScoringConfig();
 
   const scoredResult = await db.execute(`
     SELECT pr.participant_id, pr.match_id, pr.home_goals, pr.away_goals, pr.created_at,
@@ -71,11 +73,12 @@ export async function computeStandings(): Promise<StandingRow[]> {
       row.home_score,
       row.away_score,
       exactHitsByMatch.get(row.match_id) ?? 0,
+      scoring,
     );
     standing.points += points;
     if (isExactHit(row.home_goals, row.away_goals, row.home_score, row.away_score)) {
       standing.exact_hits += 1;
-    } else if (points === POINTS_OUTCOME) {
+    } else if (isOutcomeHit(row.home_goals, row.away_goals, row.home_score, row.away_score)) {
       standing.outcome_hits += 1;
     } else {
       standing.misses += 1;

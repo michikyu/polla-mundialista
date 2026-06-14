@@ -270,6 +270,29 @@ body {
   font-size: 0.92em;
 }
 
+.scoring-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.5rem;
+}
+
+.scoring-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+}
+
+.scoring-item input {
+  width: 3.2rem;
+  padding: 0.4rem 0.4rem;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  font-size: 0.95rem;
+  text-align: center;
+}
+
 .settings-backup {
   display: flex;
   flex-direction: column;

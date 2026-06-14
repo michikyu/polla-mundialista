@@ -1,4 +1,8 @@
-export function RulesModal({ onClose }: { onClose: () => void }) {
+import type { ScoringConfig } from '../../shared/scoring';
+
+const pts = (n: number) => `${n} pt${n === 1 ? '' : 's'}`;
+
+export function RulesModal({ scoring, onClose }: { scoring: ScoringConfig; onClose: () => void }) {
   return (
     <div className="modal-backdrop" onClick={onClose}>
       <div className="modal" role="dialog" aria-label="Reglas de la polla" onClick={(e) => e.stopPropagation()}>
@@ -12,19 +16,19 @@ export function RulesModal({ onClose }: { onClose: () => void }) {
           <tbody>
             <tr>
               <td className="left">🎯 Marcador exacto y fuiste el <strong>único</strong></td>
-              <td className="strong">5 pts</td>
+              <td className="strong">{pts(scoring.exactUnique)}</td>
             </tr>
             <tr>
               <td className="left">🎯 Marcador exacto <strong>repetido</strong> (otros también)</td>
-              <td className="strong">4 pts</td>
+              <td className="strong">{pts(scoring.exactShared)}</td>
             </tr>
             <tr>
               <td className="left">✅ Acertaste ganador o empate (sin marcador exacto)</td>
-              <td className="strong">3 pts</td>
+              <td className="strong">{pts(scoring.outcome)}</td>
             </tr>
             <tr>
               <td className="left">❌ No acertaste</td>
-              <td className="strong">0 pts</td>
+              <td className="strong">{pts(scoring.miss)}</td>
             </tr>
           </tbody>
         </table>
