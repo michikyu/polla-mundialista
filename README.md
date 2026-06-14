@@ -58,6 +58,7 @@ No necesitas tarjeta de crédito.
    | `TELEGRAM_BOT_TOKEN` | ⚪ Opcional | Alertas a Telegram (crea un bot con [@BotFather](https://t.me/BotFather)) |
    | `TELEGRAM_CHAT_ID` | ⚪ Opcional | ID del grupo de Telegram (número negativo) |
    | `CRON_SECRET` | ⚪ Recomendada | Protege el cron de notificaciones (Vercel lo envía solo) |
+   | `VITE_APP_TITLE` | ⚪ Opcional | Título de la app (por defecto "Polla Mundialística"). También se puede cambiar en vivo desde el ✏️ junto al título en modo admin. |
 
 5. **Deploy.** Listo: tu polla queda en `https://tu-proyecto.vercel.app`.
 6. **Personaliza los participantes:** entra, toca **🔒 Admin** (abajo) con tu `ADMIN_PASSWORD`, ve a
