@@ -1,12 +1,20 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
+import { KNOCKOUT_BRACKET } from '../../shared/bracket';
 import { api } from '../api';
-import { formatDayLabel, groupByDay } from '../format';
+import { formatKickoff, formatDayLabel, groupByDay } from '../format';
 import { MatchAdminRow } from '../components/MatchAdminRow';
 
-export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number) => void; isAdmin: boolean }) {
+interface Props {
+  onOpenMatch: (id: number) => void;
+  isAdmin: boolean;
+  viewerParticipantId: number | null;
+}
+
+export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props) {
   const [matches, setMatches] = useState<Match[]>([]);
+  const [predictedIds, setPredictedIds] = useState<Set<number>>(new Set());
   const [totalParticipants, setTotalParticipants] = useState(0);
   const [showForm, setShowForm] = useState(false);
   const [homeTeam, setHomeTeam] = useState('');
@@ -24,6 +32,20 @@ export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number
   };
 
   useEffect(reload, []);
+
+  useEffect(() => {
+    if (viewerParticipantId === null) {
+      setPredictedIds(new Set());
+      return;
+    }
+    api
+      .getPredictions(viewerParticipantId)
+      .then((preds) => setPredictedIds(new Set(preds.map((p) => p.match_id))))
+      .catch(() => {});
+  }, [viewerParticipantId]);
+
+  const missingPrediction = (match: Match) =>
+    viewerParticipantId !== null && match.status === 'pendiente' && !predictedIds.has(match.id);
 
   const handleCreate = async (event: FormEvent) => {
     event.preventDefault();
@@ -61,10 +83,21 @@ export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number
           onOpenMatch={onOpenMatch}
           isAdmin={isAdmin}
           totalParticipants={totalParticipants}
+          missingPrediction={missingPrediction(match)}
         />
       ))}
     </section>
   );
+
+  // Si filtras por una fase de eliminatoria que aún no tiene partidos, muestra la
+  // plantilla oficial (P73…) para que el filtro por fase también sirva, como en Mundial.
+  const placeholderStage =
+    stageFilter !== 'todos' && stageFilter !== 'grupos' && !matches.some((m) => m.stage === stageFilter)
+      ? (stageFilter as MatchStage)
+      : null;
+  const placeholderSlots = placeholderStage
+    ? KNOCKOUT_BRACKET.filter((s) => s.stage === placeholderStage)
+    : [];
 
   return (
     <div className="stack">
@@ -141,6 +174,37 @@ export function MatchesView({ onOpenMatch, isAdmin }: { onOpenMatch: (id: number
         </>
       )}
       {currentDays.map(renderDay)}
+
+      {placeholderStage && (
+        <section className="card day-card">
+          <h3 className="day-title">{STAGE_LABELS[placeholderStage]} — por definir</h3>
+          <p className="muted hint">
+            Estos cruces se llenan solos con los clasificados (o el admin los crea). P73…P104 es el número
+            oficial de cada partido.
+          </p>
+          {placeholderSlots.map((slot) => (
+            <div key={slot.matchNumber} className="m-item bracket-slot">
+              <div className="m-row">
+                <span className="status-ico" title="Cruce por definir">⬜</span>
+                <div className="m-main">
+                  <div className="m-teams bracket-teams">
+                    <span>{slot.home}</span>
+                    <span className="vs">vs</span>
+                    <span>{slot.away}</span>
+                  </div>
+                  <div className="m-sub">
+                    <span className="bracket-num">P{slot.matchNumber}</span>
+                    {' · '}
+                    {formatKickoff(slot.kickoff)}
+                    {` · ${slot.venue}`}
+                  </div>
+                </div>
+              </div>
+            </div>
+          ))}
+        </section>
+      )}
+
       {matches.length === 0 && (
         <p className="muted">No hay partidos. Crea el primero con el botón de arriba.</p>
       )}

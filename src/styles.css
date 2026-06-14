@@ -118,6 +118,108 @@ button.session-chip:hover {
   filter: brightness(0.95);
 }
 
+.session-wrap {
+  position: relative;
+  display: inline-flex;
+}
+
+/* Dropdown de sesión: centrado debajo del chip. */
+.session-menu {
+  top: 1.9rem;
+  left: 50%;
+  right: auto;
+  transform: translateX(-50%);
+  min-width: 11rem;
+}
+
+/* Nombre clickeable en la tabla de posiciones. */
+.link-name {
+  border: none;
+  background: none;
+  padding: 0;
+  font: inherit;
+  font-weight: 600;
+  color: var(--primary);
+  cursor: pointer;
+  text-align: left;
+}
+
+.link-name:hover {
+  text-decoration: underline;
+}
+
+/* Lista de avance del participante */
+.progress-list {
+  list-style: none;
+  margin: 0.5rem 0 0;
+  padding: 0;
+}
+
+.progress-step {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 0.1rem 0.5rem;
+  align-items: center;
+  padding: 0.5rem 0;
+  border-bottom: 1px solid var(--border);
+}
+
+.progress-step.start {
+  color: var(--muted);
+}
+
+.progress-when {
+  font-size: 0.9rem;
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  flex-wrap: wrap;
+}
+
+.progress-detail {
+  grid-column: 1;
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
+.progress-date {
+  font-size: 0.72rem;
+  color: var(--muted);
+}
+
+.progress-total {
+  grid-row: 1 / span 2;
+  grid-column: 2;
+  font-weight: 700;
+  font-size: 1.05rem;
+}
+
+/* Aviso 'te falta tu predicción' en filas de partido. */
+.missing-pred {
+  display: inline-block;
+  margin-top: 0.2rem;
+  font-size: 0.72rem;
+  font-weight: 600;
+  color: var(--warning);
+  background: #fffbeb;
+  border-radius: 999px;
+  padding: 0.05rem 0.45rem;
+}
+
+/* Formulario para añadir la propia predicción desde el detalle del partido. */
+.add-pred-form {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  flex-wrap: wrap;
+  margin-top: 0.5rem;
+}
+
+.add-pred-form input {
+  width: 3.2rem;
+  text-align: center;
+}
+
 .session-chip.session-admin {
   background: #dcfce7;
   color: var(--success);

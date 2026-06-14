@@ -6,6 +6,7 @@ import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
 import { LoginModal } from './components/LoginModal';
 import { AdminSettingsModal } from './components/AdminSettingsModal';
+import { ParticipantProgressModal } from './components/ParticipantProgressModal';
 import { DEFAULT_SCORING, type ScoringConfig } from '../shared/scoring';
 import { SplashScreen } from './components/SplashScreen';
 import { DashboardView } from './views/DashboardView';
@@ -47,6 +48,8 @@ export function App() {
   const [showRules, setShowRules] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
   const [showLogin, setShowLogin] = useState(false);
+  const [sessionMenuOpen, setSessionMenuOpen] = useState(false);
+  const [showMyProgress, setShowMyProgress] = useState(false);
   const [title, setTitle] = useState(APP_TITLE);
   const [telegramLink, setTelegramLink] = useState('');
   const [footballConfigured, setFootballConfigured] = useState(false);
@@ -124,21 +127,11 @@ export function App() {
     setView('predictions');
   };
 
-  // Un solo candado: si ya es admin, cierra sesión; si no, abre el login (passkey + contraseña).
-  const handleLockClick = () => {
+  const handleSignOut = () => {
     if (isAdmin) {
-      if (window.confirm('¿Salir del modo administrador?')) {
-        clearStoredPassword();
-        setIsAdmin(false);
-      }
-      return;
-    }
-    setShowLogin(true);
-  };
-
-  const handleParticipantSignOut = () => {
-    const name = participants.find((p) => p.id === participantAuthId)?.name ?? 'tu sesión';
-    if (window.confirm(`¿Cerrar sesión de ${name}?`)) {
+      clearStoredPassword();
+      setIsAdmin(false);
+    } else {
       clearParticipantAuth();
       setParticipantAuthId(null);
     }
@@ -154,12 +147,25 @@ export function App() {
       {showRules && <RulesModal scoring={scoring} onClose={() => setShowRules(false)} />}
       {showLogin && (
         <LoginModal
+          participants={participants}
           passkeyEnabled={passkeyEnabled}
-          onLoggedIn={() => {
+          onAdminLoggedIn={() => {
             setIsAdmin(true);
             setShowLogin(false);
           }}
+          onParticipantLoggedIn={(id) => {
+            setParticipantAuthId(id);
+            selectParticipant(id);
+            setShowLogin(false);
+          }}
           onClose={() => setShowLogin(false)}
+        />
+      )}
+      {showMyProgress && sessionParticipant && (
+        <ParticipantProgressModal
+          participantId={sessionParticipant.id}
+          name={sessionParticipant.name}
+          onClose={() => setShowMyProgress(false)}
         />
       )}
       <header className="app-header">
@@ -180,24 +186,60 @@ export function App() {
           <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
             🕐 {colombiaTime} · Colombia
           </span>
-          {isAdmin ? (
+          {!isAdmin && !sessionParticipant ? (
             <button
-              className="session-chip session-admin"
-              onClick={handleLockClick}
-              title="Cerrar sesión de administrador"
+              className="session-chip session-guest"
+              onClick={() => setShowLogin(true)}
+              title="Entrar como participante o administrador"
             >
-              🔓 Admin · salir
-            </button>
-          ) : sessionParticipant ? (
-            <button
-              className="session-chip"
-              onClick={handleParticipantSignOut}
-              title="Cerrar sesión"
-            >
-              👤 {sessionParticipant.name} · salir
+              👀 Invitado · entrar
             </button>
           ) : (
-            <span className="session-chip session-guest" title="Solo lectura">👀 Invitado</span>
+            <div className="session-wrap">
+              <button
+                className={isAdmin ? 'session-chip session-admin' : 'session-chip'}
+                onClick={() => setSessionMenuOpen((v) => !v)}
+                title="Tu sesión"
+              >
+                {isAdmin ? '🔓 Admin' : `👤 ${sessionParticipant?.name}`} ▾
+              </button>
+              {sessionMenuOpen && (
+                <>
+                  <div className="menu-backdrop" onClick={() => setSessionMenuOpen(false)} />
+                  <div className="menu session-menu">
+                    {!isAdmin && sessionParticipant && (
+                      <button
+                        onClick={() => {
+                          setSessionMenuOpen(false);
+                          setShowMyProgress(true);
+                        }}
+                      >
+                        📊 Mi avance
+                      </button>
+                    )}
+                    {isAdmin && (
+                      <button
+                        onClick={() => {
+                          setSessionMenuOpen(false);
+                          setShowSettings(true);
+                        }}
+                      >
+                        ⚙️ Configuración
+                      </button>
+                    )}
+                    <button
+                      className="menu-danger"
+                      onClick={() => {
+                        setSessionMenuOpen(false);
+                        handleSignOut();
+                      }}
+                    >
+                      🚪 Salir
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
           )}
           <button
             className="clock-rules"
@@ -222,21 +264,33 @@ export function App() {
         </nav>
       </header>
       <main className="app-main">
-        {view === 'dashboard' && <DashboardView onOpenMatch={openMatch} onOpenParticipant={openParticipant} />}
-        {view === 'matches' && <MatchesView onOpenMatch={openMatch} isAdmin={isAdmin} />}
+        {view === 'dashboard' && (
+          <DashboardView
+            onOpenMatch={openMatch}
+            onOpenParticipant={openParticipant}
+            viewerParticipantId={participantAuthId}
+          />
+        )}
+        {view === 'matches' && (
+          <MatchesView onOpenMatch={openMatch} isAdmin={isAdmin} viewerParticipantId={participantAuthId} />
+        )}
         {view === 'predictions' && (
           <PredictionsView
             isAdmin={isAdmin}
-            participantId={participantId}
+            participantId={isAdmin ? participantId : participantAuthId}
             onSelectParticipant={selectParticipant}
             unlockedId={participantAuthId}
-            onUnlockedChange={setParticipantAuthId}
+            onRequestLogin={() => setShowLogin(true)}
           />
         )}
         {view === 'standings' && <StandingsView isAdmin={isAdmin} />}
         {view === 'mundial' && <MundialView onOpenMatch={openMatch} isAdmin={isAdmin} />}
         {view === 'matchDetail' && matchId !== null && (
-          <MatchDetailView matchId={matchId} onBack={() => setView(backView)} />
+          <MatchDetailView
+            matchId={matchId}
+            onBack={() => setView(backView)}
+            viewerParticipantId={participantAuthId}
+          />
         )}
       </main>
       <footer className="app-footer">
@@ -253,25 +307,6 @@ export function App() {
         >
           ⚽ Haz tu propia polla gratis
         </a>
-        <div className="footer-admin">
-          {isAdmin && (
-            <button
-              className="admin-config"
-              onClick={() => setShowSettings(true)}
-              title="Configuración (título, token, Telegram)"
-            >
-              ⚙️ Configuración
-            </button>
-          )}
-          <button
-            className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
-            onClick={handleLockClick}
-            title={isAdmin ? 'Modo administrador activo' : 'Entrar como administrador'}
-            aria-label="Administrador"
-          >
-            {isAdmin ? '🔓' : '🔒'}
-          </button>
-        </div>
       </footer>
       {showSettings && (
         <AdminSettingsModal

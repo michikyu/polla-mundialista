@@ -1,17 +1,50 @@
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import type { MatchDetail } from '../../shared/types';
 import { api } from '../api';
 import { formatKickoff, formatTimestamp, pointsLabel } from '../format';
 import { StatusBadge } from '../components/StatusBadge';
 import { TeamLabel } from '../components/TeamLabel';
 
-export function MatchDetailView({ matchId, onBack }: { matchId: number; onBack: () => void }) {
+interface Props {
+  matchId: number;
+  onBack: () => void;
+  viewerParticipantId: number | null;
+}
+
+export function MatchDetailView({ matchId, onBack, viewerParticipantId }: Props) {
   const [detail, setDetail] = useState<MatchDetail | null>(null);
+  const [homeGoals, setHomeGoals] = useState('');
+  const [awayGoals, setAwayGoals] = useState('');
   const [error, setError] = useState('');
 
-  useEffect(() => {
+  const load = useCallback(() => {
     api.getMatchDetail(matchId).then(setDetail).catch((err: Error) => setError(err.message));
   }, [matchId]);
+
+  useEffect(load, [load]);
+
+  const handleAdd = async () => {
+    if (viewerParticipantId === null) {
+      return;
+    }
+    if (!window.confirm(`¿Confirmas ${homeGoals} - ${awayGoals}? La predicción se registra una sola vez.`)) {
+      return;
+    }
+    setError('');
+    try {
+      await api.savePrediction({
+        participant_id: viewerParticipantId,
+        match_id: matchId,
+        home_goals: Number(homeGoals),
+        away_goals: Number(awayGoals),
+      });
+      setHomeGoals('');
+      setAwayGoals('');
+      load();
+    } catch (err) {
+      setError((err as Error).message);
+    }
+  };
 
   if (error) {
     return (
@@ -27,6 +60,8 @@ export function MatchDetailView({ matchId, onBack }: { matchId: number; onBack: 
 
   const { match, predictions } = detail;
   const isFinished = match.status === 'finalizado';
+  const viewerRow = predictions.find((p) => p.participant_id === viewerParticipantId);
+  const canAddOwn = match.status === 'pendiente' && viewerParticipantId !== null && viewerRow && !viewerRow.has_prediction;
 
   return (
     <div className="stack">
@@ -52,6 +87,41 @@ export function MatchDetailView({ matchId, onBack }: { matchId: number; onBack: 
           <StatusBadge status={match.status} />
         </div>
       </section>
+
+      {canAddOwn && (
+        <section className="card">
+          <h2>📝 Tu predicción</h2>
+          <p className="muted hint">Aún no la has puesto. Va una sola vez y no se puede cambiar.</p>
+          <div className="add-pred-form">
+            <TeamLabel name={match.home_team} side="home" />
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={homeGoals}
+              onChange={(e) => setHomeGoals(e.target.value)}
+              aria-label={`Goles de ${match.home_team}`}
+            />
+            <span>-</span>
+            <input
+              type="number"
+              min={0}
+              max={99}
+              value={awayGoals}
+              onChange={(e) => setAwayGoals(e.target.value)}
+              aria-label={`Goles de ${match.away_team}`}
+            />
+            <TeamLabel name={match.away_team} side="away" />
+            <button
+              className="btn btn-primary"
+              disabled={homeGoals === '' || awayGoals === ''}
+              onClick={() => void handleAdd()}
+            >
+              Guardar
+            </button>
+          </div>
+        </section>
+      )}
 
       <section className="card">
         <h2>Predicciones de todos</h2>

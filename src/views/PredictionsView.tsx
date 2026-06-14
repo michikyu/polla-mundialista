@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { Match, Participant, Prediction } from '../../shared/types';
-import { api, setParticipantAuth } from '../api';
+import { api } from '../api';
 import { formatDayLabel, groupByDay } from '../format';
 import { PredictionRow } from '../components/PredictionRow';
 
@@ -9,7 +9,7 @@ interface Props {
   participantId: number | null;
   onSelectParticipant: (id: number | null) => void;
   unlockedId: number | null;
-  onUnlockedChange: (id: number | null) => void;
+  onRequestLogin: () => void;
 }
 
 export function PredictionsView({
@@ -17,7 +17,7 @@ export function PredictionsView({
   participantId,
   onSelectParticipant,
   unlockedId,
-  onUnlockedChange,
+  onRequestLogin,
 }: Props) {
   const [participants, setParticipants] = useState<Participant[]>([]);
   const [matches, setMatches] = useState<Match[]>([]);
@@ -46,27 +46,8 @@ export function PredictionsView({
 
   const selected = participants.find((p) => p.id === participantId) ?? null;
   const canEdit = isAdmin || (selected !== null && unlockedId === selected.id);
-
-  const handleUnlock = async () => {
-    if (!selected) {
-      return;
-    }
-    const password = window.prompt(`Contraseña de ${selected.name}:`);
-    if (!password) {
-      return;
-    }
-    try {
-      const result = await api.checkParticipantPassword(selected.id, password);
-      if (result.ok) {
-        setParticipantAuth({ id: selected.id, password });
-        onUnlockedChange(selected.id);
-      } else {
-        window.alert('Contraseña incorrecta.');
-      }
-    } catch {
-      window.alert('No se pudo verificar la contraseña.');
-    }
-  };
+  // Invitado: ni admin ni participante con sesión.
+  const isGuest = !isAdmin && unlockedId === null;
 
   // Por defecto solo se ven los partidos que aún NO empezaron (predecibles).
   // Los que ya arrancaron o terminaron van en el colapsable de "pasados".
@@ -95,35 +76,33 @@ export function PredictionsView({
   return (
     <div className="stack">
       <section className="card">
-        <h2>📝 Mis predicciones</h2>
+        <h2>📝 {isAdmin ? 'Predicciones' : 'Mis predicciones'}</h2>
         {error && <p className="error">{error}</p>}
-        <label className="select-label">
-          ¿Quién eres?
-          <select
-            value={selected ? String(selected.id) : ''}
-            onChange={(e) => onSelectParticipant(Number(e.target.value) > 0 ? Number(e.target.value) : null)}
-          >
-            <option value="">Elige tu nombre…</option>
-            {participants.map((p) => (
-              <option key={p.id} value={p.id}>{p.name}</option>
-            ))}
-          </select>
-        </label>
 
-        {selected && !canEdit && (
-          <button className="btn btn-primary unlock-btn" onClick={() => void handleUnlock()}>
-            🔑 Ingresar mi contraseña para predecir
-          </button>
+        {isGuest ? (
+          <>
+            <p className="muted">Entra con tu nombre y contraseña para ver y registrar tus predicciones.</p>
+            <button className="btn btn-primary unlock-btn" onClick={onRequestLogin}>🔑 Entrar</button>
+          </>
+        ) : isAdmin ? (
+          <label className="select-label">
+            Ver / editar predicciones de:
+            <select
+              value={selected ? String(selected.id) : ''}
+              onChange={(e) => onSelectParticipant(Number(e.target.value) > 0 ? Number(e.target.value) : null)}
+            >
+              <option value="">Elige un participante…</option>
+              {participants.map((p) => (
+                <option key={p.id} value={p.id}>{p.name}</option>
+              ))}
+            </select>
+          </label>
+        ) : (
+          <p className="muted hint">
+            Registrando como <strong>{selected?.name}</strong>. Cada predicción va <strong>una sola vez</strong>;
+            las de los demás son secretas 🤫 hasta que empiece el partido. Reglas completas en 📜 arriba.
+          </p>
         )}
-        {selected && canEdit && !isAdmin && (
-          <p className="muted hint">✅ Desbloqueado: puedes registrar tus predicciones.</p>
-        )}
-
-        <p className="muted hint">
-          ⏳ abierto · 🔒 ya empezó · ✅ finalizado. La predicción se registra <strong>una sola vez</strong> y no
-          se puede cambiar, así que piénsala bien. Las predicciones de los demás son secretas (🤫) hasta que
-          empiece el partido; solo se ve quién ya puso la suya.
-        </p>
       </section>
 
       {selected && pastDays.length > 0 && (

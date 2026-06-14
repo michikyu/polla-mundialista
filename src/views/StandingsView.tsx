@@ -1,6 +1,7 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { StandingRow } from '../../shared/types';
 import { api } from '../api';
+import { ParticipantProgressModal } from '../components/ParticipantProgressModal';
 
 export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
   const [standings, setStandings] = useState<StandingRow[]>([]);
@@ -13,6 +14,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
   const [editName, setEditName] = useState('');
   const [editPassword, setEditPassword] = useState('');
   const [editHandicap, setEditHandicap] = useState('');
+  const [progressFor, setProgressFor] = useState<{ id: number; name: string } | null>(null);
   const [error, setError] = useState('');
 
   const reload = () => {
@@ -163,7 +165,15 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
                 ) : (
                   <tr key={row.participant_id} className={index === 0 ? 'leader' : ''}>
                     <td>{index + 1}</td>
-                    <td className="left">{row.name}</td>
+                    <td className="left">
+                      <button
+                        className="link-name"
+                        onClick={() => setProgressFor({ id: row.participant_id, name: row.name })}
+                        title={`Ver el avance de ${row.name}`}
+                      >
+                        {row.name}
+                      </button>
+                    </td>
                     <td className="strong">
                       {row.points}
                       {row.handicap !== 0 && (
@@ -230,7 +240,15 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
           (3 pts) · F = falló (0 pts). A igual puntaje queda primero quien envió su predicción más temprano.
           {standings.some((row) => row.handicap !== 0) && ' ✱ = el puntaje incluye puntos de handicap (ventaja inicial).'}
         </p>
+        <p className="muted hint">👆 Toca un nombre para ver cómo ha avanzado partido a partido.</p>
       </section>
+      {progressFor && (
+        <ParticipantProgressModal
+          participantId={progressFor.id}
+          name={progressFor.name}
+          onClose={() => setProgressFor(null)}
+        />
+      )}
     </div>
   );
 }

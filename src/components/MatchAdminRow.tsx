@@ -14,9 +14,17 @@ interface Props {
   onOpenMatch: (id: number) => void;
   isAdmin: boolean;
   totalParticipants: number;
+  missingPrediction?: boolean;
 }
 
-export function MatchAdminRow({ match, onChanged, onOpenMatch, isAdmin, totalParticipants }: Props) {
+export function MatchAdminRow({
+  match,
+  onChanged,
+  onOpenMatch,
+  isAdmin,
+  totalParticipants,
+  missingPrediction,
+}: Props) {
   const [mode, setMode] = useState<Mode>('view');
   const [menuOpen, setMenuOpen] = useState(false);
   const [homeTeam, setHomeTeam] = useState(match.home_team);
@@ -88,6 +96,7 @@ export function MatchAdminRow({ match, onChanged, onOpenMatch, isAdmin, totalPar
             {match.venue ? ` · ${match.venue}` : ''}
             {match.stage !== 'grupos' ? ` · ${STAGE_LABELS[match.stage]}` : ''}
           </div>
+          {missingPrediction && <span className="missing-pred">⚠️ Te falta tu predicción</span>}
         </div>
         <PredictionRing count={match.predictions_count ?? 0} total={totalParticipants} />
         {isAdmin && (

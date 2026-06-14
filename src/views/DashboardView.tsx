@@ -11,11 +11,13 @@ const TOP_COUNT = 3;
 interface Props {
   onOpenMatch: (id: number) => void;
   onOpenParticipant: (id: number) => void;
+  viewerParticipantId: number | null;
 }
 
-export function DashboardView({ onOpenMatch, onOpenParticipant }: Props) {
+export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipantId }: Props) {
   const [matches, setMatches] = useState<Match[]>([]);
   const [standings, setStandings] = useState<StandingRow[]>([]);
+  const [predictedIds, setPredictedIds] = useState<Set<number>>(new Set());
   const [showAll, setShowAll] = useState(false);
   const [error, setError] = useState('');
 
@@ -27,6 +29,21 @@ export function DashboardView({ onOpenMatch, onOpenParticipant }: Props) {
       })
       .catch((err: Error) => setError(err.message));
   }, []);
+
+  // Para avisarle al usuario con sesión qué partidos abiertos le faltan por predecir.
+  useEffect(() => {
+    if (viewerParticipantId === null) {
+      setPredictedIds(new Set());
+      return;
+    }
+    api
+      .getPredictions(viewerParticipantId)
+      .then((preds) => setPredictedIds(new Set(preds.map((p) => p.match_id))))
+      .catch(() => {});
+  }, [viewerParticipantId]);
+
+  const missingPrediction = (match: Match) =>
+    viewerParticipantId !== null && match.status === 'pendiente' && !predictedIds.has(match.id);
 
   const totalParticipants = standings.length;
   const visibleStandings = showAll ? standings : standings.slice(0, TOP_COUNT);
@@ -91,6 +108,9 @@ export function DashboardView({ onOpenMatch, onOpenParticipant }: Props) {
                     {formatKickoff(match.kickoff)}
                     {match.venue ? ` · ${match.venue}` : ''}
                   </div>
+                  {missingPrediction(match) && (
+                    <span className="missing-pred">⚠️ Te falta tu predicción</span>
+                  )}
                 </div>
                 <PredictionRing count={match.predictions_count ?? 0} total={totalParticipants} />
               </div>
