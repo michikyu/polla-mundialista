@@ -3,6 +3,7 @@ import { api, clearStoredPassword, setStoredPassword } from './api';
 import { APP_TITLE } from './appConfig';
 import { BallIcon } from './components/BallIcon';
 import { RulesModal } from './components/RulesModal';
+import { AdminSettingsModal } from './components/AdminSettingsModal';
 import { SplashScreen } from './components/SplashScreen';
 import { DashboardView } from './views/DashboardView';
 import { MatchesView } from './views/MatchesView';
@@ -41,7 +42,10 @@ export function App() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [showSplash, setShowSplash] = useState(true);
   const [showRules, setShowRules] = useState(false);
+  const [showSettings, setShowSettings] = useState(false);
   const [title, setTitle] = useState(APP_TITLE);
+  const [telegramLink, setTelegramLink] = useState('');
+  const [footballConfigured, setFootballConfigured] = useState(false);
   const [colombiaTime, setColombiaTime] = useState(getColombiaTime);
   const [participantId, setParticipantId] = useState<number | null>(() => {
     const saved = Number(localStorage.getItem(PARTICIPANT_KEY));
@@ -52,7 +56,7 @@ export function App() {
     document.title = title;
   }, [title]);
 
-  // El título guardado por el admin (en la base) tiene prioridad sobre el de por defecto.
+  // Configuración guardada por el admin (en la base): título, link de Telegram, etc.
   useEffect(() => {
     api
       .getSettings()
@@ -60,6 +64,8 @@ export function App() {
         if (s.title) {
           setTitle(s.title);
         }
+        setTelegramLink(s.telegram_link ?? '');
+        setFootballConfigured(s.football_configured);
       })
       .catch(() => {});
   }, []);
@@ -82,19 +88,6 @@ export function App() {
     }, msToNextMinute);
     return () => clearTimeout(timeout);
   }, []);
-
-  const handleEditTitle = async () => {
-    const next = window.prompt('Nuevo título de la polla:', title);
-    if (!next || !next.trim() || next.trim() === title) {
-      return;
-    }
-    try {
-      const result = await api.updateSettings(next.trim());
-      setTitle(result.title);
-    } catch (err) {
-      window.alert((err as Error).message);
-    }
-  };
 
   const openMatch = (id: number) => {
     setBackView(view);
@@ -156,16 +149,6 @@ export function App() {
             </button>
             {title}
           </h1>
-          {isAdmin && (
-            <button
-              className="title-edit"
-              onClick={() => void handleEditTitle()}
-              title="Cambiar el título de la polla"
-              aria-label="Cambiar el título"
-            >
-              ✏️
-            </button>
-          )}
         </div>
         <div className="header-clock">
           <span className="colombia-time" title="Hora actual en Colombia (UTC-5)">
@@ -206,6 +189,11 @@ export function App() {
         )}
       </main>
       <footer className="app-footer">
+        {telegramLink && (
+          <a className="telegram-cta" href={telegramLink} target="_blank" rel="noopener noreferrer">
+            💬 Unirse al grupo de Telegram
+          </a>
+        )}
         <a
           className="github-cta"
           href="https://github.com/michikyu/polla-mundialista"
@@ -214,15 +202,41 @@ export function App() {
         >
           ⚽ Haz tu propia polla gratis
         </a>
-        <button
-          className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
-          onClick={() => void handleLockClick()}
-          title={isAdmin ? 'Modo administrador activo' : 'Entrar como administrador'}
-          aria-label="Administrador"
-        >
-          {isAdmin ? '🔓' : '🔒'}
-        </button>
+        <div className="footer-admin">
+          {isAdmin && (
+            <button
+              className="admin-config"
+              onClick={() => setShowSettings(true)}
+              title="Configuración (título, token, Telegram)"
+            >
+              ⚙️ Configuración
+            </button>
+          )}
+          <button
+            className={isAdmin ? 'admin-lock unlocked' : 'admin-lock'}
+            onClick={() => void handleLockClick()}
+            title={isAdmin ? 'Modo administrador activo' : 'Entrar como administrador'}
+            aria-label="Administrador"
+          >
+            {isAdmin ? '🔓' : '🔒'}
+          </button>
+        </div>
       </footer>
+      {showSettings && (
+        <AdminSettingsModal
+          currentTitle={title}
+          currentTelegramLink={telegramLink}
+          footballConfigured={footballConfigured}
+          onSaved={(s) => {
+            if (s.title) {
+              setTitle(s.title);
+            }
+            setTelegramLink(s.telegram_link ?? '');
+            setFootballConfigured(s.football_configured);
+          }}
+          onClose={() => setShowSettings(false)}
+        />
+      )}
     </div>
   );
 }

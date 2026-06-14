@@ -7,9 +7,9 @@ export function PredictionRing({ count, total }: Props) {
   const radius = 11;
   const circumference = 2 * Math.PI * radius;
   const fraction = total > 0 ? Math.min(count / total, 1) : 0;
-  const label = `${count}/${total}`;
-  // La letra se achica según el largo para que quepa aunque haya 10+ participantes.
-  const fontSize = label.length <= 3 ? 9 : label.length === 4 ? 7.5 : label.length === 5 ? 6.3 : 5.4;
+  // Dentro del círculo solo va el número de quienes ya predijeron.
+  const label = `${count}`;
+  const fontSize = label.length <= 2 ? 11 : 9;
   const complete = total > 0 && count >= total;
   return (
     <span

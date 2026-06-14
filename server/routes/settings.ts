@@ -4,24 +4,65 @@ import { asTrimmedString } from '../validate';
 
 export const settingsRouter = Router();
 
-// Configuración editable por el administrador. Por ahora: el título de la app.
-// GET es público (lo lee el frontend al cargar); PUT exige admin (lo valida app.ts).
+// Lee un valor de configuración de la base (o null si no existe).
+export async function getSetting(key: string): Promise<string | null> {
+  const result = await db.execute({ sql: 'SELECT value FROM settings WHERE key = ?', args: [key] });
+  return (result.rows[0]?.value as string | undefined) ?? null;
+}
+
+async function setSetting(key: string, value: string): Promise<void> {
+  await db.execute({
+    sql: `INSERT INTO settings (key, value) VALUES (?, ?)
+          ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
+    args: [key, value],
+  });
+}
+
+// GET público: solo datos NO secretos (título y link del grupo). Del token de
+// football-data solo se informa si está configurado, nunca su valor.
 settingsRouter.get('/', async (_req, res) => {
-  const result = await db.execute("SELECT value FROM settings WHERE key = 'title'");
-  const title = (result.rows[0]?.value as string | undefined) ?? null;
-  res.json({ title });
+  const [title, telegramLink, footballToken] = await Promise.all([
+    getSetting('title'),
+    getSetting('telegram_link'),
+    getSetting('football_token'),
+  ]);
+  res.json({
+    title,
+    telegram_link: telegramLink,
+    football_configured: Boolean(footballToken) || Boolean(process.env.FOOTBALL_DATA_TOKEN),
+  });
 });
 
+// PUT admin (lo protege app.ts): actualiza solo los campos enviados.
 settingsRouter.put('/', async (req, res) => {
-  const title = asTrimmedString((req.body as Record<string, unknown>)?.title);
-  if (!title) {
-    res.status(400).json({ error: 'El título no puede estar vacío.' });
-    return;
+  const body = (req.body ?? {}) as Record<string, unknown>;
+  const updates: Array<Promise<void>> = [];
+
+  if (body.title !== undefined) {
+    const title = asTrimmedString(body.title);
+    if (!title) {
+      res.status(400).json({ error: 'El título no puede estar vacío.' });
+      return;
+    }
+    updates.push(setSetting('title', title));
   }
-  await db.execute({
-    sql: `INSERT INTO settings (key, value) VALUES ('title', ?)
-          ON CONFLICT (key) DO UPDATE SET value = excluded.value`,
-    args: [title],
+  if (body.telegram_link !== undefined) {
+    updates.push(setSetting('telegram_link', asTrimmedString(body.telegram_link)));
+  }
+  if (body.football_token !== undefined) {
+    updates.push(setSetting('football_token', asTrimmedString(body.football_token)));
+  }
+
+  await Promise.all(updates);
+
+  const [title, telegramLink, footballToken] = await Promise.all([
+    getSetting('title'),
+    getSetting('telegram_link'),
+    getSetting('football_token'),
+  ]);
+  res.json({
+    title,
+    telegram_link: telegramLink,
+    football_configured: Boolean(footballToken) || Boolean(process.env.FOOTBALL_DATA_TOKEN),
   });
-  res.json({ title });
 });

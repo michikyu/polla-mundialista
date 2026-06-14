@@ -103,9 +103,13 @@ export const api = {
 
   getStandings: () => request<StandingRow[]>('/api/standings'),
 
-  getSettings: () => request<{ title: string | null }>('/api/settings'),
-  updateSettings: (title: string) =>
-    request<{ title: string }>('/api/settings', { method: 'PUT', body: JSON.stringify({ title }) }),
+  getSettings: () =>
+    request<{ title: string | null; telegram_link: string | null; football_configured: boolean }>('/api/settings'),
+  updateSettings: (data: { title?: string; telegram_link?: string; football_token?: string }) =>
+    request<{ title: string | null; telegram_link: string | null; football_configured: boolean }>('/api/settings', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
 
   syncResults: () =>
     request<{ checked: number; updated: number; created: number; unmatched: string[] }>('/api/sync-results', {

@@ -3,6 +3,7 @@ import { db } from '../db';
 import { sendResultAlerts } from '../notifier';
 import { TEAMS } from '../../shared/teams';
 import { KNOCKOUT_BRACKET } from '../../shared/bracket';
+import { getSetting } from './settings';
 import type { Match, MatchStage } from '../../shared/types';
 
 export const syncRouter = Router();
@@ -164,11 +165,12 @@ export class SyncError extends Error {
 // eliminatoria cuando ya tienen equipos definidos. NO manda avisos (eso lo decide quien llama).
 // Requiere la variable de entorno FOOTBALL_DATA_TOKEN (registro gratuito).
 export async function syncFromFootballData(): Promise<SyncCounts> {
-  const token = process.env.FOOTBALL_DATA_TOKEN;
+  // El token puede venir de la variable de entorno o configurarse desde la página (admin).
+  const token = process.env.FOOTBALL_DATA_TOKEN || (await getSetting('football_token'));
   if (!token) {
     throw new SyncError(
       400,
-      'Falta configurar FOOTBALL_DATA_TOKEN. Regístrate gratis en football-data.org y agrega el token como variable de entorno.',
+      'Falta el token de football-data.org. Configúralo en ⚙️ (modo admin) o como variable de entorno FOOTBALL_DATA_TOKEN.',
     );
   }
 
