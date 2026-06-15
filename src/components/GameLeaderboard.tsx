@@ -22,23 +22,27 @@ export function GameLeaderboard() {
     api.getHighscores().then(setScores).catch(() => {});
   }, []);
 
-  if (!GAME_ENABLED || scores.length === 0) {
+  if (!GAME_ENABLED) {
     return null;
   }
 
   return (
     <section className="card">
       <h2>🏆 Récords · Tiro al arco</h2>
-      <p className="muted hint">Toca el reloj de arriba para jugar. Los mejores puntajes del grupo:</p>
-      <ol className="gl-board">
-        {scores.map((row, index) => (
-          <li key={row.participant_id} className="gl-row">
-            <span className="gl-medal">{MEDALS[index] ?? `${index + 1}.`}</span>
-            <span className="gl-name">{row.name}</span>
-            <span className="gl-pts">{row.score}</span>
-          </li>
-        ))}
-      </ol>
+      <p className="muted hint">Toca el reloj 🕐 de arriba para jugar. Los mejores puntajes del grupo:</p>
+      {scores.length === 0 ? (
+        <p className="muted">Aún nadie ha jugado. ¡Sé el primero en marcar un récord!</p>
+      ) : (
+        <ol className="gl-board">
+          {scores.map((row, index) => (
+            <li key={row.participant_id} className="gl-row">
+              <span className="gl-medal">{MEDALS[index] ?? `${index + 1}.`}</span>
+              <span className="gl-name">{row.name}</span>
+              <span className="gl-pts">{row.score}</span>
+            </li>
+          ))}
+        </ol>
+      )}
     </section>
   );
 }
