@@ -1,6 +1,6 @@
 import { Router } from 'express';
 import { isAdminPassword } from '../auth';
-import { sendPrematchAlerts, sendResultAlerts } from '../notifier';
+import { sendPrematchAlerts, sendKickoffAlerts, sendResultAlerts } from '../notifier';
 import { syncFromFootballData } from './sync';
 
 export const notifyRouter = Router();
@@ -26,7 +26,8 @@ notifyRouter.get('/', async (req, res) => {
 
   // 2) Avisos al grupo (sin duplicados, los controla la tabla notifications).
   const prematch = await sendPrematchAlerts();
+  const kickoff = await sendKickoffAlerts();
   const results = await sendResultAlerts();
 
-  res.json({ sync, prematch, results });
+  res.json({ sync, prematch, kickoff, results });
 });

@@ -1,6 +1,7 @@
 import { createClient, type InStatement } from '@libsql/client';
 import { mkdirSync } from 'node:fs';
 import path from 'node:path';
+import { kickoffTimestamp } from '../shared/time';
 import {
   GROUP_FIXTURES,
   MATCH2_PREDICTIONS,
@@ -130,6 +131,26 @@ async function migrate(): Promise<void> {
     await db.execute({
       sql: "UPDATE participants SET password = ? WHERE name = ? AND (password IS NULL OR password = '')",
       args: [password, name],
+    });
+  }
+
+  // Una sola vez: marca los partidos ya empezados como "inicio" ya avisado, para que al
+  // estrenar la alerta de "predicciones al comenzar" no se disparen mensajes de partidos viejos.
+  const seeded = await db.execute("SELECT value FROM settings WHERE key = 'inicio_seeded'");
+  if (seeded.rows.length === 0) {
+    const now = Date.now();
+    const sentAt = new Date().toISOString();
+    const matchesRes = await db.execute('SELECT id, kickoff FROM matches');
+    for (const row of matchesRes.rows as unknown as Array<{ id: number; kickoff: string }>) {
+      if (kickoffTimestamp(row.kickoff) <= now) {
+        await db.execute({
+          sql: "INSERT OR IGNORE INTO notifications (match_id, kind, sent_at) VALUES (?, 'inicio', ?)",
+          args: [row.id, sentAt],
+        });
+      }
+    }
+    await db.execute({
+      sql: "INSERT OR REPLACE INTO settings (key, value) VALUES ('inicio_seeded', '1')",
     });
   }
 }

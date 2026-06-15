@@ -105,6 +105,78 @@ export async function sendPrematchAlerts(): Promise<number> {
   return sent;
 }
 
+interface KickoffPredRow {
+  name: string;
+  home_goals: number | null;
+  away_goals: number | null;
+}
+
+// Ventana para revelar predicciones: el partido empezó hace menos de 6 h (el cron corre
+// cada 10 min, así que lo agarra a tiempo; evita avisar partidos muy viejos).
+const KICKOFF_WINDOW_MS = 6 * 60 * 60_000;
+
+// Al comenzar un partido (se cierran las predicciones), revela qué predijo cada quien.
+export async function sendKickoffAlerts(): Promise<number> {
+  const now = Date.now();
+  const matchesResult = await db.execute('SELECT * FROM matches');
+  const started = (matchesResult.rows as unknown as Match[]).filter((match) => {
+    const ts = kickoffTimestamp(match.kickoff);
+    return ts <= now && ts > now - KICKOFF_WINDOW_MS;
+  });
+  if (started.length === 0) {
+    return 0;
+  }
+
+  const notifiedResult = await db.execute("SELECT match_id FROM notifications WHERE kind = 'inicio'");
+  const notified = new Set(notifiedResult.rows.map((row) => Number(row.match_id)));
+
+  let sent = 0;
+  for (const match of started) {
+    if (notified.has(match.id)) {
+      continue;
+    }
+    const predsResult = await db.execute({
+      sql: `
+        SELECT p.name, pr.home_goals, pr.away_goals
+        FROM participants p
+        LEFT JOIN predictions pr ON pr.participant_id = p.id AND pr.match_id = ?
+        ORDER BY p.name COLLATE NOCASE
+      `,
+      args: [match.id],
+    });
+    const rows = predsResult.rows as unknown as KickoffPredRow[];
+    const predicted: string[] = [];
+    const missing: string[] = [];
+    for (const row of rows) {
+      if (row.home_goals !== null && row.away_goals !== null) {
+        predicted.push(`• ${row.name}: ${row.home_goals}-${row.away_goals}`);
+      } else {
+        missing.push(row.name);
+      }
+    }
+
+    const text = [
+      `🔓 ¡Empieza! ${homeWithFlag(match.home_team)} vs ${awayWithFlag(match.away_team)}`,
+      '📋 Predicciones:',
+      ...(predicted.length > 0 ? predicted : ['(nadie predijo este partido)']),
+      missing.length > 0 ? `🙈 Sin predicción: ${missing.join(', ')}` : '',
+      '',
+      `Sigue todo en: ${APP_URL}`,
+    ]
+      .filter((line) => line !== '')
+      .join('\n');
+
+    if (await sendTelegram(text)) {
+      await db.execute({
+        sql: "INSERT INTO notifications (match_id, kind, sent_at) VALUES (?, 'inicio', ?)",
+        args: [match.id, new Date().toISOString()],
+      });
+      sent += 1;
+    }
+  }
+  return sent;
+}
+
 interface FinishedPredRow {
   participant_id: number;
   name: string;
