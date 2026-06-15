@@ -206,23 +206,22 @@ telegramRouter.post('/', async (req, res) => {
     res.sendStatus(401);
     return;
   }
-  // Responde 200 de inmediato; Telegram no necesita el cuerpo.
-  res.sendStatus(200);
-
+  // IMPORTANTE: en serverless la función se congela al responder, así que primero
+  // hacemos todo el trabajo (consultar + enviar la respuesta) y solo al final el 200.
   try {
     const update = req.body as TelegramUpdate;
     const text = update.message?.text?.trim();
     const chatId = update.message?.chat?.id;
-    if (!text || chatId === undefined || !text.startsWith('/')) {
-      return;
-    }
-    // "/tabla@PollaMoachosBot extra" → "tabla"
-    const cmd = text.slice(1).split(/\s+/)[0].split('@')[0].toLowerCase();
-    const reply = await handleCommand(cmd);
-    if (reply) {
-      await sendTelegramTo(chatId, reply);
+    if (text && chatId !== undefined && text.startsWith('/')) {
+      // "/tabla@PollaMoachosBot extra" → "tabla"
+      const cmd = text.slice(1).split(/\s+/)[0].split('@')[0].toLowerCase();
+      const reply = await handleCommand(cmd);
+      if (reply) {
+        await sendTelegramTo(chatId, reply);
+      }
     }
   } catch {
-    // Nunca propagar errores al webhook (ya respondimos 200).
+    // Nunca propagar errores al webhook.
   }
+  res.sendStatus(200);
 });
