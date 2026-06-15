@@ -26,11 +26,10 @@ const bogotaTime = new Intl.DateTimeFormat('es-CO', {
   hour12: true,
 });
 
-// Envía un mensaje al grupo. Devuelve false si falta configurar el bot (no rompe nada).
-export async function sendTelegram(text: string): Promise<boolean> {
+// Envía un mensaje a un chat específico. Devuelve false si falta el token (no rompe nada).
+export async function sendTelegramTo(chatId: string | number, text: string): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
-  const chatId = process.env.TELEGRAM_CHAT_ID;
-  if (!token || !chatId) {
+  if (!token) {
     return false;
   }
   try {
@@ -43,6 +42,15 @@ export async function sendTelegram(text: string): Promise<boolean> {
   } catch {
     return false;
   }
+}
+
+// Envía un mensaje al grupo (chat configurado). Devuelve false si falta configurar el bot.
+export async function sendTelegram(text: string): Promise<boolean> {
+  const chatId = process.env.TELEGRAM_CHAT_ID;
+  if (!chatId) {
+    return false;
+  }
+  return sendTelegramTo(chatId, text);
 }
 
 // Aviso previo: partidos que empiezan pronto y a quién le falta predicción.

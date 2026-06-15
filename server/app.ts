@@ -13,6 +13,7 @@ import { settingsRouter } from './routes/settings';
 import { backupRouter } from './routes/backup';
 import { webauthnRouter } from './routes/webauthn';
 import { gameRouter } from './routes/game';
+import { telegramRouter } from './routes/telegram';
 
 export const app = express();
 
@@ -39,6 +40,7 @@ app.use('/api', (req, res, next) => {
     req.method === 'GET' ||
     (req.method === 'PUT' && req.path === '/predictions') ||
     (req.method === 'POST' && req.path === '/game/score') ||
+    (req.method === 'POST' && req.path === '/telegram') ||
     (req.method === 'POST' && req.path.startsWith('/webauthn/'))
   ) {
     next();
@@ -57,6 +59,7 @@ app.use('/api/settings', settingsRouter);
 app.use('/api/backup', backupRouter);
 app.use('/api/webauthn', webauthnRouter);
 app.use('/api/game', gameRouter);
+app.use('/api/telegram', telegramRouter);
 
 // Si el frontend fue compilado (npm run build), servirlo directamente (modo local).
 const distDir = path.join(import.meta.dirname, '..', 'dist');
