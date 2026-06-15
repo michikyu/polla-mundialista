@@ -170,6 +170,12 @@ export const api = {
       method: 'POST',
     }),
 
+  // Activa/actualiza los comandos del bot de Telegram (registra webhook + menú).
+  setupTelegram: () =>
+    request<{ ok: boolean; webhook?: string; commands?: string; error?: string }>('/api/telegram/setup', {
+      method: 'POST',
+    }),
+
   // Mini-juego "Tiro al arco": tabla de mejores puntajes y envío del propio puntaje.
   getHighscores: () =>
     request<Array<{ participant_id: number; name: string; score: number }>>('/api/game/highscores'),

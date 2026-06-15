@@ -131,7 +131,7 @@ function cmdAyuda(): string {
   ].join('\n');
 }
 
-async function handleCommand(cmd: string): Promise<string | null> {
+export async function handleCommand(cmd: string): Promise<string | null> {
   switch (cmd) {
     case 'tabla':
       return cmdTabla();
@@ -152,6 +152,47 @@ async function handleCommand(cmd: string): Promise<string | null> {
       return null;
   }
 }
+
+// Registra el webhook y el menú de comandos usando el token en runtime (no expuesto fuera).
+async function registerWebhook(): Promise<Record<string, unknown>> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const secret = process.env.TELEGRAM_WEBHOOK_SECRET;
+  if (!token) {
+    return { ok: false, error: 'Falta TELEGRAM_BOT_TOKEN en el entorno.' };
+  }
+  const call = (method: string, body: unknown) =>
+    fetch(`https://api.telegram.org/bot${token}/${method}`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    }).then((r) => r.json() as Promise<{ ok?: boolean; description?: string }>);
+
+  const wh = await call('setWebhook', {
+    url: `${APP_URL}/api/telegram`,
+    secret_token: secret,
+    allowed_updates: ['message'],
+  });
+  const cmds = await call('setMyCommands', {
+    commands: [
+      { command: 'tabla', description: 'Posiciones actuales' },
+      { command: 'proximos', description: 'Próximos partidos' },
+      { command: 'resultados', description: 'Últimos resultados' },
+      { command: 'faltan', description: 'A quién le falta predecir' },
+      { command: 'puntaje', description: 'Cómo se puntúa' },
+      { command: 'ayuda', description: 'Lista de comandos' },
+    ],
+  });
+  return {
+    ok: Boolean(wh.ok && cmds.ok),
+    webhook: wh.ok ? 'registrado' : wh.description ?? 'error',
+    commands: cmds.ok ? 'registrados' : cmds.description ?? 'error',
+  };
+}
+
+// Activa/actualiza los comandos del bot. Lo protege el middleware de admin (POST en app.ts).
+telegramRouter.post('/setup', async (_req, res) => {
+  res.json(await registerWebhook());
+});
 
 interface TelegramUpdate {
   message?: { text?: string; chat?: { id?: number } };

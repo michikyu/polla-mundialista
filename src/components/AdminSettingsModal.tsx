@@ -63,7 +63,27 @@ export function AdminSettingsModal({
   const [error, setError] = useState('');
   const [backupMsg, setBackupMsg] = useState('');
   const [passkeyMsg, setPasskeyMsg] = useState('');
+  const [telegramMsg, setTelegramMsg] = useState('');
+  const [telegramBusy, setTelegramBusy] = useState(false);
   const fileInput = useRef<HTMLInputElement>(null);
+
+  const handleSetupTelegram = async () => {
+    setTelegramMsg('');
+    setError('');
+    setTelegramBusy(true);
+    try {
+      const result = await api.setupTelegram();
+      if (result.ok) {
+        setTelegramMsg('✅ Comandos activados. Prueba /ayuda en el grupo.');
+      } else {
+        setError('No se pudieron activar: ' + (result.error ?? result.webhook ?? 'revisa el token del bot.'));
+      }
+    } catch (err) {
+      setError('No se pudieron activar: ' + (err as Error).message);
+    } finally {
+      setTelegramBusy(false);
+    }
+  };
   const [stickers, setStickers] = useState<number[]>([]);
   const [stickerMsg, setStickerMsg] = useState('');
   const [stickerBusy, setStickerBusy] = useState(false);
@@ -316,6 +336,21 @@ export function AdminSettingsModal({
             </button>
           </div>
           {passkeyMsg && <p className="muted hint">{passkeyMsg}</p>}
+        </div>
+
+        <div className="settings-backup">
+          <span className="settings-label">🤖 Comandos del bot de Telegram</span>
+          <span className="settings-help">
+            Activa los comandos <code>/tabla</code>, <code>/proximos</code>, <code>/resultados</code>,{' '}
+            <code>/faltan</code>, <code>/puntaje</code> y <code>/ayuda</code> en el grupo. Hazlo una vez (o
+            de nuevo si cambia la dirección del sitio). Requiere las variables del bot ya configuradas.
+          </span>
+          <div className="row-actions">
+            <button type="button" className="btn" onClick={() => void handleSetupTelegram()} disabled={telegramBusy}>
+              {telegramBusy ? 'Activando…' : '🤖 Activar / actualizar comandos'}
+            </button>
+          </div>
+          {telegramMsg && <p className="muted hint">{telegramMsg}</p>}
         </div>
 
         {GAME_ENABLED && (
