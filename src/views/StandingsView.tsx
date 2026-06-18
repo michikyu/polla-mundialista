@@ -96,7 +96,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
             />
             <input
               type="number"
-              placeholder="Handicap (ventaja inicial, opcional)"
+              placeholder="Handicap +/- (ventaja o castigo, opcional)"
               value={newHandicap}
               onChange={(event) => setNewHandicap(event.target.value)}
             />
@@ -149,7 +149,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
                         />
                         <input
                           type="number"
-                          placeholder="Handicap (ventaja inicial)"
+                          placeholder="Handicap +/- (ventaja o castigo)"
                           value={editHandicap}
                           onChange={(event) => setEditHandicap(event.target.value)}
                         />
@@ -235,7 +235,7 @@ export function StandingsView({ isAdmin }: { isAdmin: boolean }) {
         <p className="muted hint">
           E = marcador exacto (5 pts si fuiste el único, 4 si fue repetido) · A = acertó ganador o empate
           (3 pts) · F = falló o no predijo (0 pts). A igual puntaje queda primero quien envió su predicción más temprano.
-          {standings.some((row) => row.handicap !== 0) && ' ✱ = el puntaje incluye puntos de handicap (ventaja inicial).'}
+          {standings.some((row) => row.handicap !== 0) && ' ✱ = el puntaje incluye handicap (ventaja con +, castigo con −).'}
         </p>
         <p className="muted hint">👆 Toca una fila para ver cómo ese jugador ha avanzado partido a partido.</p>
       </section>
