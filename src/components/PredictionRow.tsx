@@ -1,5 +1,6 @@
 import { useEffect, useState, type FormEvent } from 'react';
 import type { Match, Prediction } from '../../shared/types';
+import { adminCanEditPredictions } from '../../shared/time';
 import { api } from '../api';
 import { formatTime, formatTimestamp, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
@@ -48,8 +49,12 @@ export function PredictionRow({ match, participantId, prediction, onSaved, canCr
 
   const isOpen = match.status === 'pendiente';
   const isFinished = match.status === 'finalizado';
+  // El admin puede corregir hasta 24 h después del inicio; el participante, solo antes del inicio.
+  const canAdminEdit = isAdmin && adminCanEditPredictions(match.kickoff);
   // Un solo intento: el dueño solo puede crear; el administrador puede corregir.
-  const showInputs = isOpen && ((isAdmin && (editing || prediction === null)) || (!isAdmin && canCreate && prediction === null));
+  const showInputs =
+    (canAdminEdit && (editing || prediction === null)) ||
+    (!isAdmin && isOpen && canCreate && prediction === null);
   const goalsHidden = prediction !== null && prediction.home_goals === null;
 
   return (
@@ -137,8 +142,12 @@ export function PredictionRow({ match, participantId, prediction, onSaved, canCr
             {prediction?.points !== null && prediction?.points !== undefined && (
               <span className={`points points-${prediction.points}`}>{prediction.points}</span>
             )}
-            {isAdmin && isOpen && prediction !== null && (
-              <button className="btn-icon" title="Corregir predicción (solo admin)" onClick={() => setEditing(true)}>
+            {canAdminEdit && prediction !== null && (
+              <button
+                className="btn-icon"
+                title="Corregir predicción (admin, hasta 24 h tras el inicio)"
+                onClick={() => setEditing(true)}
+              >
                 ✏️
               </button>
             )}

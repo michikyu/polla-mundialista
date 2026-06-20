@@ -12,3 +12,12 @@ export function kickoffTimestamp(kickoff: string): number {
 export function kickoffDate(kickoff: string): Date {
   return new Date(kickoffTimestamp(kickoff));
 }
+
+// Tras el inicio, las predicciones quedan cerradas para los participantes, pero el
+// administrador todavía puede corregirlas durante esta ventana (p. ej. para registrar
+// una predicción que llegó a tiempo por otro canal y no se alcanzó a guardar).
+export const ADMIN_PREDICTION_EDIT_WINDOW_MS = 24 * 60 * 60 * 1000;
+
+export function adminCanEditPredictions(kickoff: string, now: number = Date.now()): boolean {
+  return now - kickoffTimestamp(kickoff) <= ADMIN_PREDICTION_EDIT_WINDOW_MS;
+}
