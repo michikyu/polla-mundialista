@@ -2,6 +2,7 @@ import { Router } from 'express';
 import { db } from '../db';
 import { isAdminPassword, participantPasswordMatches } from '../auth';
 import { predictionsAreOpen } from '../matchStatus';
+import { adminCanEditPredictions, kickoffTimestamp } from '../../shared/time';
 import { calculatePoints } from '../../shared/scoring';
 import { getScoringConfig } from './settings';
 import { asGoals, asId } from '../validate';
@@ -125,9 +126,19 @@ predictionsRouter.put('/', async (req, res) => {
     res.status(404).json({ error: 'Partido no encontrado.' });
     return;
   }
-  if (!predictionsAreOpen(match)) {
-    res.status(409).json({ error: 'El partido ya empezó: las predicciones están cerradas.' });
-    return;
+  // Antes del inicio: cualquiera (dueño o admin) puede guardar. Después del inicio: las
+  // predicciones quedan cerradas para los participantes, pero el admin puede corregirlas
+  // hasta 24 h después (p. ej. una predicción que llegó a tiempo y no se alcanzó a registrar).
+  const open = predictionsAreOpen(match);
+  if (!open) {
+    if (!isAdmin) {
+      res.status(409).json({ error: 'El partido ya empezó: las predicciones están cerradas.' });
+      return;
+    }
+    if (!adminCanEditPredictions(match.kickoff)) {
+      res.status(409).json({ error: 'Pasaron más de 24 horas desde el inicio: ya no se pueden editar.' });
+      return;
+    }
   }
 
   const existing = await db.execute({
@@ -139,7 +150,11 @@ predictionsRouter.put('/', async (req, res) => {
     return;
   }
 
+  // Una predicción registrada por el admin después del inicio no debe ganar el desempate
+  // por "envío más temprano": se le pone como created_at la hora de inicio (tope), de modo
+  // que quede después de quienes sí enviaron a tiempo. updated_at refleja la edición real.
   const now = new Date().toISOString();
+  const createdAt = open ? now : new Date(kickoffTimestamp(match.kickoff)).toISOString();
   await db.execute({
     sql: `
       INSERT INTO predictions (participant_id, match_id, home_goals, away_goals, created_at, updated_at)
@@ -150,7 +165,7 @@ predictionsRouter.put('/', async (req, res) => {
         away_goals = excluded.away_goals,
         updated_at = excluded.updated_at
     `,
-    args: [participantId, matchId, homeGoals, awayGoals, now, now],
+    args: [participantId, matchId, homeGoals, awayGoals, createdAt, now],
   });
 
   const row = await db.execute({
