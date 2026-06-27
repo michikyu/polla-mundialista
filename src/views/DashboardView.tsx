@@ -53,6 +53,10 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
   // eliminatorias en vez de "Próximos partidos".
   const groupMatches = matches.filter((m) => m.stage === 'grupos');
   const groupStageDone = groupMatches.length > 0 && groupMatches.every((m) => m.status === 'finalizado');
+  // El cuadro aparece en cuanto ya hay cruces de eliminatoria (o se acabaron los grupos),
+  // así no espera al último partido de grupos para mostrar los 16avos.
+  const knockoutStarted = matches.some((m) => m.stage !== 'grupos');
+  const showBracket = groupStageDone || knockoutStarted;
   const upcoming = matches.filter((m) => m.status !== 'finalizado').slice(0, 5);
   const finished = matches
     .filter((m) => m.status === 'finalizado')
@@ -93,7 +97,7 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
         <p className="muted hint">Toca un nombre para ver sus predicciones y resultados.</p>
       </section>
 
-      {groupStageDone && (
+      {showBracket && (
         <section className="card">
           <h2>🏆 Eliminatorias</h2>
           <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} pendingOnly mode="tree" />
