@@ -89,14 +89,18 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
     </section>
   );
 
-  // Fases de eliminatoria que aún no tienen partidos reales: se muestran como plantilla
-  // oficial (P73…), tanto en "Todas las fases" como al filtrar una fase puntual.
-  const placeholderStages = STAGE_ORDER.filter(
-    (s) =>
-      s !== 'grupos' &&
-      (stageFilter === 'todos' || stageFilter === s) &&
-      !matches.some((m) => m.stage === s),
-  );
+  // Cupos de eliminatoria que AÚN NO tienen partido real (enlazados por hora). Así se
+  // muestran los que faltan aunque la fase ya tenga algunos cruces definidos (p. ej.
+  // si 16avos tiene 4 reales, aparecen los otros 12 como plantilla oficial P73…).
+  const unfilledSlotsByStage = STAGE_ORDER.filter(
+    (s) => s !== 'grupos' && (stageFilter === 'todos' || stageFilter === s),
+  )
+    .map((s) => {
+      const takenKickoffs = new Set(matches.filter((m) => m.stage === s).map((m) => m.kickoff));
+      const slots = KNOCKOUT_BRACKET.filter((slot) => slot.stage === s && !takenKickoffs.has(slot.kickoff));
+      return { stage: s, slots };
+    })
+    .filter((x) => x.slots.length > 0);
 
   return (
     <div className="stack">
@@ -174,10 +178,10 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
       )}
       {currentDays.map(renderDay)}
 
-      {placeholderStages.map((stage) => (
+      {unfilledSlotsByStage.map(({ stage, slots }) => (
         <section key={stage} className="card day-card">
           <h3 className="day-title">{STAGE_LABELS[stage]} — por definir</h3>
-          {KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => (
+          {slots.map((slot) => (
             <div key={slot.matchNumber} className="m-item bracket-slot">
               <div className="m-row">
                 <span className="status-ico" title="Cruce por definir">⬜</span>
