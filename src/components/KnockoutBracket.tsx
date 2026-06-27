@@ -112,10 +112,47 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, mode =
 
   const cardsFor = (stage: MatchStage, compact: boolean): ReactNode[] => {
     const real = realByStage.get(stage) ?? [];
-    if (real.length > 0) {
+    // En Inicio (onlyReal) solo se muestran los cruces ya definidos, sin plantilla.
+    if (onlyReal) {
       return real.map((m) => matchCard(m, compact));
     }
-    return KNOCKOUT_BRACKET.filter((s) => s.stage === stage).map((slot) => slotCard(slot, compact));
+
+    const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === stage);
+    if (slots.length === 0) {
+      return real.map((m) => matchCard(m, compact));
+    }
+
+    // Cada cupo muestra su partido real si ya existe, o el placeholder si no. Como los
+    // partidos reales no guardan su número de cuadro, se enlazan por hora (exacta o, si no,
+    // por mismo día). Así NUNCA se ocultan cupos aunque solo algunos cruces estén definidos.
+    const slotToReal = new Map<number, Match>();
+    const usedReal = new Set<number>();
+    for (const slot of slots) {
+      const m = real.find((r) => !usedReal.has(r.id) && r.kickoff === slot.kickoff);
+      if (m) {
+        slotToReal.set(slot.matchNumber, m);
+        usedReal.add(m.id);
+      }
+    }
+    for (const m of real) {
+      if (usedReal.has(m.id)) {
+        continue;
+      }
+      const day = m.kickoff.slice(0, 10);
+      const slot = slots.find((s) => !slotToReal.has(s.matchNumber) && s.kickoff.slice(0, 10) === day);
+      if (slot) {
+        slotToReal.set(slot.matchNumber, m);
+        usedReal.add(m.id);
+      }
+    }
+
+    const cards = slots.map((slot) => {
+      const m = slotToReal.get(slot.matchNumber);
+      return m ? matchCard(m, compact) : slotCard(slot, compact);
+    });
+    // Cualquier partido real que no calce con un cupo se agrega igual (no se pierde).
+    const extras = real.filter((m) => !usedReal.has(m.id)).map((m) => matchCard(m, compact));
+    return [...cards, ...extras];
   };
 
   // Lista apilada (para Inicio): cada ronda con su título y tarjetas grandes.
