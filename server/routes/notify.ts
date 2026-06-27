@@ -1,7 +1,7 @@
 import { Router } from 'express';
 import { isAdminPassword } from '../auth';
 import { sendPrematchAlerts, sendKickoffAlerts, sendResultAlerts } from '../notifier';
-import { syncFromFootballData } from './sync';
+import { syncFromFootballData, autoCreateKnockoutFromGroups } from './sync';
 
 export const notifyRouter = Router();
 
@@ -24,10 +24,18 @@ notifyRouter.get('/', async (req, res) => {
     // football-data.org no disponible: se reintenta en la próxima corrida.
   }
 
+  // 1b) Crea los cruces de eliminatoria ya decididos por los grupos (no depende de la API).
+  let autoCreated = 0;
+  try {
+    autoCreated = await autoCreateKnockoutFromGroups();
+  } catch {
+    // No romper el cron si esto falla.
+  }
+
   // 2) Avisos al grupo (sin duplicados, los controla la tabla notifications).
   const prematch = await sendPrematchAlerts();
   const kickoff = await sendKickoffAlerts();
   const results = await sendResultAlerts();
 
-  res.json({ sync, prematch, kickoff, results });
+  res.json({ sync, autoCreated, prematch, kickoff, results });
 });

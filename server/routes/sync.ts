@@ -3,6 +3,7 @@ import { db } from '../db';
 import { sendResultAlerts } from '../notifier';
 import { TEAMS } from '../../shared/teams';
 import { KNOCKOUT_BRACKET } from '../../shared/bracket';
+import { resolveGroupSlots } from '../../shared/groupTables';
 import { getSetting } from './settings';
 import type { Match, MatchStage } from '../../shared/types';
 
@@ -274,10 +275,62 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
   return { checked, updated, created, unmatched };
 }
 
-// Ruta del botón 🔄 (solo admin): sincroniza y, si hubo cambios, anuncia al grupo.
+// Crea los partidos de eliminatoria cuyos DOS equipos ya están decididos por los grupos
+// (cupos "1.º/2.º Grupo X"), para que se puedan predecir sin esperar a football-data.
+// No crea los cupos de "mejor tercero" (dependen de la tabla FIFA). Es idempotente:
+// no duplica si el cruce ya existe (por equipos o por hora del cupo).
+export async function autoCreateKnockoutFromGroups(): Promise<number> {
+  const result = await db.execute('SELECT * FROM matches');
+  const matches = result.rows as unknown as Match[];
+  const resolved = resolveGroupSlots(matches);
+
+  const knockout = matches.filter((m) => m.stage !== 'grupos');
+  const bySlotTime = new Set(knockout.map((m) => `${m.stage}|${m.kickoff}`));
+  const pairKey = (stage: string, a: string, b: string) => `${stage}|${[a, b].sort().join('|')}`;
+  const byPair = new Set(knockout.map((m) => pairKey(m.stage, m.home_team, m.away_team)));
+
+  let created = 0;
+  for (const slot of KNOCKOUT_BRACKET) {
+    const home = resolved.get(slot.home);
+    const away = resolved.get(slot.away);
+    if (!home || !away) {
+      continue; // falta algún equipo (cupo de tercero o ronda posterior)
+    }
+    if (bySlotTime.has(`${slot.stage}|${slot.kickoff}`) || byPair.has(pairKey(slot.stage, home, away))) {
+      continue; // ya existe
+    }
+    await db.execute({
+      sql: `INSERT INTO matches (home_team, away_team, kickoff, venue, stage, status)
+            VALUES (?, ?, ?, ?, ?, 'pendiente')`,
+      args: [home, away, slot.kickoff, slot.venue, slot.stage],
+    });
+    bySlotTime.add(`${slot.stage}|${slot.kickoff}`);
+    byPair.add(pairKey(slot.stage, home, away));
+    created += 1;
+  }
+  return created;
+}
+
+// Ruta del botón 🔄 (solo admin): sincroniza, crea cruces ya decididos por grupos y,
+// si hubo cambios, anuncia al grupo. La creación por grupos corre aunque football-data falle.
 syncRouter.post('/', async (_req, res) => {
+  let counts: SyncCounts | null = null;
+  let syncErr: unknown = null;
   try {
-    const counts = await syncFromFootballData();
+    counts = await syncFromFootballData();
+  } catch (err) {
+    syncErr = err;
+  }
+
+  let autoCreated = 0;
+  try {
+    autoCreated = await autoCreateKnockoutFromGroups();
+  } catch {
+    // Si falla la creación por grupos no rompemos el resto.
+  }
+
+  if (counts) {
+    counts.created += autoCreated;
     if (counts.updated > 0 || counts.created > 0) {
       try {
         await sendResultAlerts();
@@ -286,8 +339,14 @@ syncRouter.post('/', async (_req, res) => {
       }
     }
     res.json(counts);
-  } catch (err) {
-    const status = err instanceof SyncError ? err.status : 500;
-    res.status(status).json({ error: (err as Error).message });
+    return;
   }
+
+  // football-data falló; aun así pudimos crear cruces decididos por grupos.
+  if (autoCreated > 0) {
+    res.json({ checked: 0, updated: 0, created: autoCreated, unmatched: [] });
+    return;
+  }
+  const status = syncErr instanceof SyncError ? syncErr.status : 500;
+  res.status(status).json({ error: (syncErr as Error).message });
 });
