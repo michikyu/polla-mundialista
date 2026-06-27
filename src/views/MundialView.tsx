@@ -156,6 +156,19 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
         </label>
       </section>
 
+      {(view === 'todos' || view === 'eliminatorias') && (
+      <section className="card">
+        <h2>🏆 Eliminatorias</h2>
+        <p className="muted hint">
+          Bracket oficial de la FIFA, se llena solo con los clasificados. Mientras tanto cada cupo dice de
+          dónde sale: <strong>1A</strong> = 1.º del Grupo A, <strong>2B</strong> = 2.º del Grupo B, y
+          <strong> 3.º ABCDF</strong> = el mejor tercero que venga de los grupos A, B, C, D o F. Las flechas
+          (<strong>▸ 73</strong>) son el ganador de ese partido.
+        </p>
+        <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} mode="tree" />
+      </section>
+      )}
+
       {(view === 'todos' || view === 'grupos') && (
       <div className="groups-grid">
         {GROUP_LABELS.map((group) => (
@@ -243,19 +256,6 @@ export function MundialView({ onOpenMatch, isAdmin }: MundialProps) {
             </tbody>
           </table>
         </div>
-      </section>
-      )}
-
-      {(view === 'todos' || view === 'eliminatorias') && (
-      <section className="card">
-        <h2>🏆 Eliminatorias</h2>
-        <p className="muted hint">
-          Bracket oficial de la FIFA, se llena solo con los clasificados. Mientras tanto cada cupo dice de
-          dónde sale: <strong>1A</strong> = 1.º del Grupo A, <strong>2B</strong> = 2.º del Grupo B, y
-          <strong> 3.º ABCDF</strong> = el mejor tercero que venga de los grupos A, B, C, D o F. Las flechas
-          (<strong>▸ 73</strong>) son el ganador de ese partido.
-        </p>
-        <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} mode="tree" />
       </section>
       )}
     </div>

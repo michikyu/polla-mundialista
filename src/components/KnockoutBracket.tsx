@@ -9,6 +9,7 @@ interface Props {
   matches: Match[];
   onOpenMatch: (id: number) => void;
   onlyReal?: boolean; // solo rondas con equipos definidos
+  pendingOnly?: boolean; // esconde las fases ya jugadas por completo (para Inicio)
   mode?: 'tree' | 'list'; // cuadro horizontal o lista apilada
 }
 
@@ -51,7 +52,13 @@ function tbdLabel(s: string): ReactNode {
   return s;
 }
 
-export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, mode = 'tree' }: Props) {
+export function KnockoutBracket({
+  matches,
+  onOpenMatch,
+  onlyReal = false,
+  pendingOnly = false,
+  mode = 'tree',
+}: Props) {
   const realByStage = new Map<MatchStage, Match[]>();
   for (const stage of KNOCKOUT_STAGES) {
     realByStage.set(
@@ -60,9 +67,19 @@ export function KnockoutBracket({ matches, onOpenMatch, onlyReal = false, mode =
     );
   }
 
+  // Una fase está "completa" cuando TODOS sus partidos (según el cuadro oficial) ya
+  // se jugaron — p. ej. los 16 de dieciseisavos. Así no se esconde antes de tiempo.
+  const stageCompleted = (s: MatchStage): boolean => {
+    const slotCount = KNOCKOUT_BRACKET.filter((slot) => slot.stage === s).length;
+    const finalized = (realByStage.get(s) ?? []).filter((m) => m.status === 'finalizado').length;
+    return slotCount > 0 && finalized >= slotCount;
+  };
+
   const availableStages = onlyReal
     ? KNOCKOUT_STAGES.filter((s) => (realByStage.get(s) ?? []).length > 0)
-    : KNOCKOUT_STAGES;
+    : pendingOnly
+      ? KNOCKOUT_STAGES.filter((s) => !stageCompleted(s))
+      : KNOCKOUT_STAGES;
 
   if (availableStages.length === 0) {
     return null;

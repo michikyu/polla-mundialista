@@ -49,6 +49,10 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
 
   const totalParticipants = standings.length;
   const visibleStandings = showAll ? standings : standings.slice(0, TOP_COUNT);
+  // Cuando todos los partidos de grupos ya se jugaron, Inicio muestra el cuadro de
+  // eliminatorias en vez de "Próximos partidos".
+  const groupMatches = matches.filter((m) => m.stage === 'grupos');
+  const groupStageDone = groupMatches.length > 0 && groupMatches.every((m) => m.status === 'finalizado');
   const upcoming = matches.filter((m) => m.status !== 'finalizado').slice(0, 5);
   const finished = matches
     .filter((m) => m.status === 'finalizado')
@@ -89,6 +93,14 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
         <p className="muted hint">Toca un nombre para ver sus predicciones y resultados.</p>
       </section>
 
+      {groupStageDone && (
+        <section className="card">
+          <h2>🏆 Eliminatorias</h2>
+          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} pendingOnly mode="tree" />
+        </section>
+      )}
+
+      {!groupStageDone && (
       <section className="card day-card">
         <h2>📅 Próximos partidos</h2>
         {upcoming.length === 0 ? (
@@ -120,6 +132,7 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
           ))
         )}
       </section>
+      )}
 
       <section className="card day-card">
         <h2>✅ Últimos resultados</h2>
@@ -144,13 +157,6 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
           ))
         )}
       </section>
-
-      {matches.some((m) => m.stage !== 'grupos') && (
-        <section className="card">
-          <h2>🏆 Eliminatorias</h2>
-          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} onlyReal mode="list" />
-        </section>
-      )}
 
       <GameLeaderboard />
 
