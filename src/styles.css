@@ -1638,29 +1638,34 @@ select:focus {
   min-width: 0;
 }
 
-/* Anillo de predicciones + alerta en el cuadro de Inicio (solo cruces abiertos). */
-.bk-pred {
+/* El borde del cuadro es el anillo de predicciones (solo cruces abiertos en Inicio):
+   se llena alrededor según cuántos predijeron; punteado si al usuario le falta. */
+.bk-ring {
   position: absolute;
-  top: 1px;
-  right: 1px;
-  display: inline-flex;
-  align-items: center;
-  gap: 1px;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   pointer-events: none;
 }
 
-.bk-pred .ring {
-  width: 17px;
-  height: 17px;
+.bk-ring rect {
+  fill: none;
 }
 
-.bk-warn {
-  font-size: 0.6rem;
-  line-height: 1;
+.bk-ring-fill {
+  stroke: var(--primary);
+  stroke-width: 2.5;
+  stroke-linecap: round;
 }
 
-.bk-card-missing {
-  box-shadow: inset 0 0 0 2px #f59e0b;
+.bk-ring-fill.complete {
+  stroke: var(--success);
+}
+
+.bk-ring-missing {
+  stroke: #f59e0b;
+  stroke-width: 2.5;
+  stroke-dasharray: 5 4;
 }
 
 .bk-tree .bk-row {

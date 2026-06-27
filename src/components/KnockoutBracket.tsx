@@ -4,7 +4,6 @@ import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET, type BracketSlot } from '../../shared/bracket';
 import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
-import { PredictionRing } from './PredictionRing';
 
 interface Props {
   matches: Match[];
@@ -101,22 +100,52 @@ export function KnockoutBracket({
     const as = match.away_score;
     const homeWon = done && hs !== null && as !== null && hs > as;
     const awayWon = done && hs !== null && as !== null && as > hs;
-    // Solo en Inicio y solo en cruces abiertos: anillo de conteo + alerta si te falta.
+    // Solo en Inicio y solo en cruces abiertos: el borde del cuadro es un anillo de
+    // progreso (cuántos predijeron). Si TÚ no has predicho, el borde va punteado.
     const open = match.status === 'pendiente';
     const showRing = showPredictions && open;
     const missing = showRing && viewerParticipantId !== null && !predictedMatchIds?.has(match.id);
+    const count = match.predictions_count ?? 0;
+    const fraction = totalParticipants > 0 ? Math.min(count / totalParticipants, 1) : 0;
+    const complete = totalParticipants > 0 && count >= totalParticipants;
     return (
       <button
         key={match.id}
-        className={missing ? 'bk-card bk-card-missing' : 'bk-card'}
+        className="bk-card"
         onClick={() => onOpenMatch(match.id)}
-        title={`${match.home_team} vs ${match.away_team} · ${STATUS_LABELS[match.status]}`}
+        title={
+          missing
+            ? `${match.home_team} vs ${match.away_team} · ¡te falta tu predicción!`
+            : `${match.home_team} vs ${match.away_team} · ${STATUS_LABELS[match.status]}`
+        }
       >
         {showRing && (
-          <span className="bk-pred">
-            {missing && <span className="bk-warn" title="Te falta tu predicción">⚠️</span>}
-            <PredictionRing count={match.predictions_count ?? 0} total={totalParticipants} />
-          </span>
+          <svg className="bk-ring" viewBox="0 0 100 100" preserveAspectRatio="none" aria-hidden="true">
+            {missing ? (
+              <rect
+                className="bk-ring-missing"
+                x="1.5"
+                y="1.5"
+                width="97"
+                height="97"
+                rx="7"
+                pathLength="100"
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : fraction > 0 ? (
+              <rect
+                className={complete ? 'bk-ring-fill complete' : 'bk-ring-fill'}
+                x="1.5"
+                y="1.5"
+                width="97"
+                height="97"
+                rx="7"
+                pathLength="100"
+                strokeDasharray={`${fraction * 100} 100`}
+                vectorEffect="non-scaling-stroke"
+              />
+            ) : null}
+          </svg>
         )}
         <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
           <TeamLabel name={match.home_team} side="home" />
