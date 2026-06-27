@@ -4,6 +4,7 @@ import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET, type BracketSlot } from '../../shared/bracket';
 import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
+import { PredictionRing } from './PredictionRing';
 
 interface Props {
   matches: Match[];
@@ -11,6 +12,11 @@ interface Props {
   onlyReal?: boolean; // solo rondas con equipos definidos
   pendingOnly?: boolean; // esconde las fases ya jugadas por completo (para Inicio)
   mode?: 'tree' | 'list'; // cuadro horizontal o lista apilada
+  // Predicciones (para Inicio): muestra anillo de conteo y borde de alerta en cruces abiertos.
+  showPredictions?: boolean;
+  totalParticipants?: number;
+  predictedMatchIds?: Set<number>;
+  viewerParticipantId?: number | null;
 }
 
 const KNOCKOUT_STAGES: MatchStage[] = STAGE_ORDER.filter((s) => s !== 'grupos');
@@ -58,6 +64,10 @@ export function KnockoutBracket({
   onlyReal = false,
   pendingOnly = false,
   mode = 'tree',
+  showPredictions = false,
+  totalParticipants = 0,
+  predictedMatchIds,
+  viewerParticipantId = null,
 }: Props) {
   const realByStage = new Map<MatchStage, Match[]>();
   for (const stage of KNOCKOUT_STAGES) {
@@ -91,13 +101,23 @@ export function KnockoutBracket({
     const as = match.away_score;
     const homeWon = done && hs !== null && as !== null && hs > as;
     const awayWon = done && hs !== null && as !== null && as > hs;
+    // Solo en Inicio y solo en cruces abiertos: anillo de conteo + alerta si te falta.
+    const open = match.status === 'pendiente';
+    const showRing = showPredictions && open;
+    const missing = showRing && viewerParticipantId !== null && !predictedMatchIds?.has(match.id);
     return (
       <button
         key={match.id}
-        className="bk-card"
+        className={missing ? 'bk-card bk-card-missing' : 'bk-card'}
         onClick={() => onOpenMatch(match.id)}
         title={`${match.home_team} vs ${match.away_team} · ${STATUS_LABELS[match.status]}`}
       >
+        {showRing && (
+          <span className="bk-pred">
+            {missing && <span className="bk-warn" title="Te falta tu predicción">⚠️</span>}
+            <PredictionRing count={match.predictions_count ?? 0} total={totalParticipants} />
+          </span>
+        )}
         <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
           <TeamLabel name={match.home_team} side="home" />
           <span className="bk-score">{done ? hs : ''}</span>

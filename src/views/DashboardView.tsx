@@ -100,7 +100,16 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
       {showBracket && (
         <section className="card">
           <h2>🏆 Eliminatorias</h2>
-          <KnockoutBracket matches={matches} onOpenMatch={onOpenMatch} pendingOnly mode="tree" />
+          <KnockoutBracket
+            matches={matches}
+            onOpenMatch={onOpenMatch}
+            pendingOnly
+            mode="tree"
+            showPredictions
+            totalParticipants={totalParticipants}
+            predictedMatchIds={predictedIds}
+            viewerParticipantId={viewerParticipantId}
+          />
         </section>
       )}
 

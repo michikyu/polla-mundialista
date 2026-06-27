@@ -1638,6 +1638,31 @@ select:focus {
   min-width: 0;
 }
 
+/* Anillo de predicciones + alerta en el cuadro de Inicio (solo cruces abiertos). */
+.bk-pred {
+  position: absolute;
+  top: 1px;
+  right: 1px;
+  display: inline-flex;
+  align-items: center;
+  gap: 1px;
+  pointer-events: none;
+}
+
+.bk-pred .ring {
+  width: 17px;
+  height: 17px;
+}
+
+.bk-warn {
+  font-size: 0.6rem;
+  line-height: 1;
+}
+
+.bk-card-missing {
+  box-shadow: inset 0 0 0 2px #f59e0b;
+}
+
 .bk-tree .bk-row {
   gap: 0.2rem;
   font-size: 0.68rem;
