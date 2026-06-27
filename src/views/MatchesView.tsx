@@ -2,6 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET } from '../../shared/bracket';
+import { resolveGroupSlots } from '../../shared/groupTables';
 import { api } from '../api';
 import { formatKickoff, formatDayLabel, groupByDay } from '../format';
 import { MatchAdminRow } from '../components/MatchAdminRow';
@@ -102,6 +103,9 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
     })
     .filter((x) => x.slots.length > 0);
 
+  // Equipos ya decididos por los grupos (para mostrarlos en los cupos "por definir").
+  const resolvedSlots = resolveGroupSlots(matches);
+
   return (
     <div className="stack">
       <section className="card">
@@ -187,9 +191,9 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
                 <span className="status-ico" title="Cruce por definir">⬜</span>
                 <div className="m-main">
                   <div className="m-teams bracket-teams">
-                    <span>{slot.home}</span>
+                    <span>{resolvedSlots.get(slot.home) ?? slot.home}</span>
                     <span className="vs">vs</span>
-                    <span>{slot.away}</span>
+                    <span>{resolvedSlots.get(slot.away) ?? slot.away}</span>
                   </div>
                   <div className="m-sub">
                     <span className="bracket-num">P{slot.matchNumber}</span>

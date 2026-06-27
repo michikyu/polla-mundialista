@@ -1,82 +1,10 @@
 import { useEffect, useState } from 'react';
 import type { Match } from '../../shared/types';
-import { GROUP_LABELS, TEAMS } from '../../shared/teams';
+import { GROUP_LABELS } from '../../shared/teams';
+import { buildGroupTables, compareStats, diff, type TeamStats } from '../../shared/groupTables';
 import { api } from '../api';
 import { TeamLabel } from '../components/TeamLabel';
 import { KnockoutBracket } from '../components/KnockoutBracket';
-
-interface TeamStats {
-  name: string;
-  played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
-  points: number;
-}
-
-function emptyStats(name: string): TeamStats {
-  return { name, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 };
-}
-
-function applyResult(stats: TeamStats, scored: number, conceded: number): void {
-  stats.played += 1;
-  stats.goalsFor += scored;
-  stats.goalsAgainst += conceded;
-  if (scored > conceded) {
-    stats.won += 1;
-    stats.points += 3;
-  } else if (scored === conceded) {
-    stats.drawn += 1;
-    stats.points += 1;
-  } else {
-    stats.lost += 1;
-  }
-}
-
-function diff(stats: TeamStats): number {
-  return stats.goalsFor - stats.goalsAgainst;
-}
-
-function compareStats(a: TeamStats, b: TeamStats): number {
-  return b.points - a.points || diff(b) - diff(a) || b.goalsFor - a.goalsFor || a.name.localeCompare(b.name, 'es');
-}
-
-// Tablas de los 12 grupos calculadas a partir de los resultados registrados.
-function buildGroupTables(matches: Match[]): Map<string, TeamStats[]> {
-  const statsByTeam = new Map<string, TeamStats>();
-  for (const [name, info] of Object.entries(TEAMS)) {
-    if (info.group) {
-      statsByTeam.set(name, emptyStats(name));
-    }
-  }
-  for (const match of matches) {
-    if (match.stage !== 'grupos' || match.status !== 'finalizado') {
-      continue;
-    }
-    if (match.home_score === null || match.away_score === null) {
-      continue;
-    }
-    const home = statsByTeam.get(match.home_team);
-    const away = statsByTeam.get(match.away_team);
-    if (home) {
-      applyResult(home, match.home_score, match.away_score);
-    }
-    if (away) {
-      applyResult(away, match.away_score, match.home_score);
-    }
-  }
-  const tables = new Map<string, TeamStats[]>();
-  for (const group of GROUP_LABELS) {
-    const teams = Object.entries(TEAMS)
-      .filter(([, info]) => info.group === group)
-      .map(([name]) => statsByTeam.get(name) as TeamStats)
-      .sort(compareStats);
-    tables.set(group, teams);
-  }
-  return tables;
-}
 
 interface MundialProps {
   onOpenMatch: (id: number) => void;

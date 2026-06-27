@@ -2,6 +2,7 @@ import type { ReactNode } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET, type BracketSlot } from '../../shared/bracket';
+import { resolveGroupSlots } from '../../shared/groupTables';
 import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
 
@@ -68,6 +69,9 @@ export function KnockoutBracket({
   predictedMatchIds,
   viewerParticipantId = null,
 }: Props) {
+  // Cupos "1.º/2.º Grupo X" ya decididos por los resultados de grupos (equipo real).
+  const resolvedSlots = resolveGroupSlots(matches);
+
   const realByStage = new Map<MatchStage, Match[]>();
   for (const stage of KNOCKOUT_STAGES) {
     realByStage.set(
@@ -164,17 +168,29 @@ export function KnockoutBracket({
     );
   };
 
-  const slotCard = (slot: BracketSlot, compact: boolean): ReactNode => (
-    <div key={slot.matchNumber} className="bk-card placeholder" title={`${slot.home} vs ${slot.away}`}>
-      <div className="bk-row tbd">{compact ? tbdLabel(slot.home) : slot.home}</div>
-      <div className="bk-row tbd">{compact ? tbdLabel(slot.away) : slot.away}</div>
-      {!compact && (
-        <div className="bk-meta">
-          <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
+  const slotCard = (slot: BracketSlot, compact: boolean): ReactNode => {
+    const homeTeam = resolvedSlots.get(slot.home);
+    const awayTeam = resolvedSlots.get(slot.away);
+    return (
+      <div
+        key={slot.matchNumber}
+        className="bk-card placeholder"
+        title={`${homeTeam ?? slot.home} vs ${awayTeam ?? slot.away}`}
+      >
+        <div className={homeTeam ? 'bk-row' : 'bk-row tbd'}>
+          {homeTeam ? <TeamLabel name={homeTeam} side="home" /> : compact ? tbdLabel(slot.home) : slot.home}
         </div>
-      )}
-    </div>
-  );
+        <div className={awayTeam ? 'bk-row' : 'bk-row tbd'}>
+          {awayTeam ? <TeamLabel name={awayTeam} side="home" /> : compact ? tbdLabel(slot.away) : slot.away}
+        </div>
+        {!compact && (
+          <div className="bk-meta">
+            <span className="bracket-num">P{slot.matchNumber}</span> · {formatKickoff(slot.kickoff)}
+          </div>
+        )}
+      </div>
+    );
+  };
 
   const cardsFor = (stage: MatchStage, compact: boolean): ReactNode[] => {
     const real = realByStage.get(stage) ?? [];
