@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import type { MatchDetail } from '../../shared/types';
 import { api } from '../api';
-import { formatKickoff, formatTimestamp, pointsLabel } from '../format';
+import { formatKickoff, formatTimestamp, pointsLabel, scoreLine } from '../format';
 import { StatusBadge } from '../components/StatusBadge';
 import { TeamLabel } from '../components/TeamLabel';
 
@@ -73,7 +73,7 @@ export function MatchDetailView({ matchId, onBack, viewerParticipantId }: Props)
             <div className="match-teams big">
               <TeamLabel name={match.home_team} side="home" full />
               {isFinished ? (
-                <span className="score">{match.home_score} - {match.away_score}</span>
+                <span className="score">{scoreLine(match)}</span>
               ) : (
                 <span className="vs">vs</span>
               )}

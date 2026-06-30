@@ -660,6 +660,24 @@ select:focus {
   font-weight: 600;
 }
 
+.penalty-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex-wrap: wrap;
+  flex-basis: 100%;
+}
+
+.penalty-row input[type='number'] {
+  width: 3rem;
+  text-align: center;
+}
+
+.penalty-label {
+  font-size: 0.8rem;
+  color: var(--muted);
+}
+
 .saved-tag {
   color: var(--success);
   font-size: 0.85rem;

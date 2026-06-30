@@ -118,6 +118,8 @@ async function migrate(): Promise<void> {
     'ALTER TABLE predictions ADD COLUMN created_at TEXT',
     'ALTER TABLE predictions ADD COLUMN updated_at TEXT',
     'ALTER TABLE webauthn_credentials ADD COLUMN participant_id INTEGER',
+    'ALTER TABLE matches ADD COLUMN home_penalties INTEGER',
+    'ALTER TABLE matches ADD COLUMN away_penalties INTEGER',
   ];
   for (const sql of alters) {
     try {

@@ -94,7 +94,10 @@ interface ApiMatch {
   stage: string;
   homeTeam: ApiTeam;
   awayTeam: ApiTeam;
-  score: { fullTime: { home: number | null; away: number | null } };
+  score: {
+    fullTime: { home: number | null; away: number | null };
+    penalties?: { home: number | null; away: number | null };
+  };
 }
 
 function resolveTeamName(team: ApiTeam): string | null {
@@ -222,6 +225,8 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
     }
     const homeScore = apiMatch.score.fullTime.home;
     const awayScore = apiMatch.score.fullTime.away;
+    const homePens = apiMatch.score.penalties?.home ?? null;
+    const awayPens = apiMatch.score.penalties?.away ?? null;
     const finished = apiMatch.status === 'FINISHED' && homeScore !== null && awayScore !== null;
     if (finished) {
       checked += 1;
@@ -239,8 +244,8 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
       }
       const kickoff = toColombiaKickoff(apiMatch.utcDate);
       await db.execute({
-        sql: `INSERT INTO matches (home_team, away_team, kickoff, venue, stage, home_score, away_score, status)
-              VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
+        sql: `INSERT INTO matches (home_team, away_team, kickoff, venue, stage, home_score, away_score, home_penalties, away_penalties, status)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
         args: [
           home,
           away,
@@ -249,6 +254,8 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
           stage,
           finished ? homeScore : null,
           finished ? awayScore : null,
+          finished ? homePens : null,
+          finished ? awayPens : null,
           finished ? 'finalizado' : 'pendiente',
         ],
       });
@@ -261,11 +268,13 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
       const alreadyCorrect =
         match.status === 'finalizado' &&
         match.home_score === homeScore &&
-        match.away_score === awayScore;
+        match.away_score === awayScore &&
+        (match.home_penalties ?? null) === homePens &&
+        (match.away_penalties ?? null) === awayPens;
       if (!alreadyCorrect) {
         await db.execute({
-          sql: "UPDATE matches SET home_score = ?, away_score = ?, status = 'finalizado' WHERE id = ?",
-          args: [homeScore, awayScore, match.id],
+          sql: "UPDATE matches SET home_score = ?, away_score = ?, home_penalties = ?, away_penalties = ?, status = 'finalizado' WHERE id = ?",
+          args: [homeScore, awayScore, homePens, awayPens, match.id],
         });
         updated += 1;
       }

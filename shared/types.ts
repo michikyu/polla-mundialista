@@ -42,6 +42,8 @@ export interface Match {
   venue: string | null;
   home_score: number | null;
   away_score: number | null;
+  home_penalties?: number | null;
+  away_penalties?: number | null;
   status: MatchStatus;
   stage: MatchStage;
   predictions_count?: number;

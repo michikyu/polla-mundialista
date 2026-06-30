@@ -108,10 +108,21 @@ export const api = {
   ) => request<Match>(`/api/matches/${id}`, { method: 'PUT', body: JSON.stringify(data) }),
   reopenMatch: (id: number) =>
     request<Match>(`/api/matches/${id}/reopen`, { method: 'POST' }),
-  registerResult: (id: number, homeScore: number, awayScore: number) =>
+  registerResult: (
+    id: number,
+    homeScore: number,
+    awayScore: number,
+    homePenalties?: number | null,
+    awayPenalties?: number | null,
+  ) =>
     request<Match>(`/api/matches/${id}/result`, {
       method: 'POST',
-      body: JSON.stringify({ home_score: homeScore, away_score: awayScore }),
+      body: JSON.stringify({
+        home_score: homeScore,
+        away_score: awayScore,
+        home_penalties: homePenalties ?? null,
+        away_penalties: awayPenalties ?? null,
+      }),
     }),
   deleteMatch: (id: number) => request<{ ok: boolean }>(`/api/matches/${id}`, { method: 'DELETE' }),
 

@@ -207,6 +207,8 @@ export async function sendResultAlerts(): Promise<number> {
   for (const match of pending) {
     const homeScore = match.home_score as number;
     const awayScore = match.away_score as number;
+    const hpTxt = match.home_penalties != null ? ` (${match.home_penalties})` : '';
+    const apTxt = match.away_penalties != null ? ` (${match.away_penalties})` : '';
 
     // Predicciones de este partido para calcular los puntos ganados por cada quien.
     const predsResult = await db.execute({
@@ -241,7 +243,7 @@ export async function sendResultAlerts(): Promise<number> {
     });
 
     const text = [
-      `✅ Final: ${homeWithFlag(match.home_team)} ${homeScore} - ${awayScore} ${awayWithFlag(match.away_team)}`,
+      `✅ Final: ${homeWithFlag(match.home_team)} ${homeScore}${hpTxt} - ${awayScore}${apTxt} ${awayWithFlag(match.away_team)}`,
       '',
       '📊 Tabla actualizada:',
       ...tableLines,

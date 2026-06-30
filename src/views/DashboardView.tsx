@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react';
 import type { Match, StandingRow } from '../../shared/types';
 import { api } from '../api';
-import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
+import { formatKickoff, scoreLine, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from '../components/TeamLabel';
 import { PredictionRing } from '../components/PredictionRing';
 import { KnockoutBracket } from '../components/KnockoutBracket';
@@ -159,7 +159,7 @@ export function DashboardView({ onOpenMatch, onOpenParticipant, viewerParticipan
                 <div className="m-main">
                   <div className="m-teams">
                     <TeamLabel name={match.home_team} side="home" />
-                    <span className="score">{match.home_score} - {match.away_score}</span>
+                    <span className="score">{scoreLine(match)}</span>
                     <TeamLabel name={match.away_team} side="away" />
                   </div>
                   <div className="m-sub">{formatKickoff(match.kickoff)}</div>

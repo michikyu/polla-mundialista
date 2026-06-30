@@ -2,7 +2,7 @@ import { useState, type FormEvent, type MouseEvent } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { api } from '../api';
-import { formatTime, STATUS_ICONS, STATUS_LABELS } from '../format';
+import { formatTime, scoreLine, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
 import { PredictionRing } from './PredictionRing';
 
@@ -34,7 +34,13 @@ export function MatchAdminRow({
   const [stage, setStage] = useState<MatchStage>(match.stage);
   const [homeScore, setHomeScore] = useState(match.home_score?.toString() ?? '');
   const [awayScore, setAwayScore] = useState(match.away_score?.toString() ?? '');
+  const [homePens, setHomePens] = useState(match.home_penalties?.toString() ?? '');
+  const [awayPens, setAwayPens] = useState(match.away_penalties?.toString() ?? '');
   const [error, setError] = useState('');
+
+  // Penaltis: solo en eliminatoria y cuando el marcador quedó empatado.
+  const tieEntered = homeScore !== '' && homeScore === awayScore;
+  const showPenaltyInputs = match.stage !== 'grupos' && tieEntered;
 
   const run = async (action: () => Promise<unknown>) => {
     setError('');
@@ -54,7 +60,9 @@ export function MatchAdminRow({
 
   const handleResult = (event: FormEvent) => {
     event.preventDefault();
-    void run(() => api.registerResult(match.id, Number(homeScore), Number(awayScore)));
+    const hp = showPenaltyInputs && homePens !== '' ? Number(homePens) : null;
+    const ap = showPenaltyInputs && awayPens !== '' ? Number(awayPens) : null;
+    void run(() => api.registerResult(match.id, Number(homeScore), Number(awayScore), hp, ap));
   };
 
   const pickAction = (event: MouseEvent, action: () => void) => {
@@ -85,7 +93,7 @@ export function MatchAdminRow({
           <div className="m-teams">
             <TeamLabel name={match.home_team} side="home" />
             {match.status === 'finalizado' ? (
-              <span className="score">{match.home_score} - {match.away_score}</span>
+              <span className="score">{scoreLine(match)}</span>
             ) : (
               <span className="vs">vs</span>
             )}
@@ -186,6 +194,30 @@ export function MatchAdminRow({
             required
           />
           <span>{match.away_team}</span>
+          {showPenaltyInputs && (
+            <div className="penalty-row">
+              <span className="penalty-label">🥅 Penaltis (si hubo tanda):</span>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                value={homePens}
+                onChange={(e) => setHomePens(e.target.value)}
+                placeholder="0"
+                aria-label={`Penaltis ${match.home_team}`}
+              />
+              <span>-</span>
+              <input
+                type="number"
+                min={0}
+                max={99}
+                value={awayPens}
+                onChange={(e) => setAwayPens(e.target.value)}
+                placeholder="0"
+                aria-label={`Penaltis ${match.away_team}`}
+              />
+            </div>
+          )}
           <div className="row-actions">
             <button type="submit" className="btn btn-primary">Guardar resultado</button>
             <button type="button" className="btn" onClick={() => setMode('view')}>Cancelar</button>

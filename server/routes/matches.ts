@@ -5,7 +5,7 @@ import { withEffectiveStatus } from '../matchStatus';
 import { sendResultAlerts } from '../notifier';
 import { calculatePoints, isExactHit } from '../../shared/scoring';
 import { getScoringConfig } from './settings';
-import { asTrimmedString, asGoals, asId, asStage } from '../validate';
+import { asTrimmedString, asGoals, asId, asStage, asPenalty } from '../validate';
 import type { Match, MatchDetail, MatchPredictionRow } from '../../shared/types';
 
 export const matchesRouter = Router();
@@ -143,7 +143,7 @@ matchesRouter.post('/:id/reopen', async (req, res) => {
   await db.batch(
     [
       {
-        sql: "UPDATE matches SET status = 'pendiente', home_score = NULL, away_score = NULL WHERE id = ?",
+        sql: "UPDATE matches SET status = 'pendiente', home_score = NULL, away_score = NULL, home_penalties = NULL, away_penalties = NULL WHERE id = ?",
         args: [match.id],
       },
       // Borra el aviso de resultado para que, al volver a registrarlo, se anuncie de nuevo.
@@ -159,6 +159,10 @@ matchesRouter.post('/:id/result', async (req, res) => {
   const body = req.body as Record<string, unknown>;
   const homeScore = asGoals(body?.home_score);
   const awayScore = asGoals(body?.away_score);
+  // Penaltis: solo tienen sentido si el partido quedó empatado en goles.
+  const tied = homeScore !== null && awayScore !== null && homeScore === awayScore;
+  const homePens = tied ? asPenalty(body?.home_penalties) : null;
+  const awayPens = tied ? asPenalty(body?.away_penalties) : null;
   const match = id ? await getMatch(id) : undefined;
   if (!match) {
     res.status(404).json({ error: 'Partido no encontrado.' });
@@ -169,8 +173,8 @@ matchesRouter.post('/:id/result', async (req, res) => {
     return;
   }
   await db.execute({
-    sql: "UPDATE matches SET home_score = ?, away_score = ?, status = 'finalizado' WHERE id = ?",
-    args: [homeScore, awayScore, match.id],
+    sql: "UPDATE matches SET home_score = ?, away_score = ?, home_penalties = ?, away_penalties = ?, status = 'finalizado' WHERE id = ?",
+    args: [homeScore, awayScore, homePens, awayPens, match.id],
   });
   // Anuncio inmediato al grupo (marcador + tabla). Si Telegram falla, el cron reintenta.
   try {

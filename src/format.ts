@@ -1,5 +1,18 @@
-import type { MatchStatus } from '../shared/types';
+import type { Match, MatchStatus } from '../shared/types';
 import { kickoffDate } from '../shared/time';
+
+// Goles de un lado; si hubo penaltis, los muestra en paréntesis: "1 (4)".
+export function sideScore(goals: number | null | undefined, penalties: number | null | undefined): string {
+  if (goals == null) {
+    return '';
+  }
+  return penalties != null ? `${goals} (${penalties})` : `${goals}`;
+}
+
+// Marcador completo "1 (4) - 1 (2)".
+export function scoreLine(match: Match): string {
+  return `${sideScore(match.home_score, match.home_penalties)} - ${sideScore(match.away_score, match.away_penalties)}`;
+}
 
 // Todos los horarios de partidos se muestran en hora de Colombia (UTC-5),
 // sin importar la zona horaria del navegador del usuario.

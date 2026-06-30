@@ -2,8 +2,8 @@ import type { ReactNode } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET, bracketRank, type BracketSlot } from '../../shared/bracket';
-import { resolveGroupSlots } from '../../shared/groupTables';
-import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
+import { resolveBracketSlots } from '../../shared/groupTables';
+import { formatKickoff, sideScore, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
 
 interface Props {
@@ -69,8 +69,8 @@ export function KnockoutBracket({
   predictedMatchIds,
   viewerParticipantId = null,
 }: Props) {
-  // Cupos "1.º/2.º Grupo X" ya decididos por los resultados de grupos (equipo real).
-  const resolvedSlots = resolveGroupSlots(matches);
+  // Cupos ya decididos: por grupos ("1.º/2.º Grupo X") y por partidos jugados ("Gana P##").
+  const resolvedSlots = resolveBracketSlots(matches);
 
   const realByStage = new Map<MatchStage, Match[]>();
   for (const stage of KNOCKOUT_STAGES) {
@@ -102,8 +102,11 @@ export function KnockoutBracket({
     const done = match.status === 'finalizado';
     const hs = match.home_score;
     const as = match.away_score;
-    const homeWon = done && hs !== null && as !== null && hs > as;
-    const awayWon = done && hs !== null && as !== null && as > hs;
+    const hp = match.home_penalties ?? null;
+    const ap = match.away_penalties ?? null;
+    const penWin = hs !== null && as !== null && hs === as && hp !== null && ap !== null;
+    const homeWon = done && hs !== null && as !== null && (hs > as || (penWin && hp > ap));
+    const awayWon = done && hs !== null && as !== null && (as > hs || (penWin && ap > hp));
     // Solo en Inicio y solo en cruces abiertos: el borde del cuadro es un anillo de
     // progreso (cuántos predijeron). Si TÚ no has predicho, el borde va punteado.
     const open = match.status === 'pendiente';
@@ -153,11 +156,11 @@ export function KnockoutBracket({
         )}
         <div className={homeWon ? 'bk-row winner' : 'bk-row'}>
           <TeamLabel name={match.home_team} side="home" />
-          <span className="bk-score">{done ? hs : ''}</span>
+          <span className="bk-score">{done ? sideScore(hs, match.home_penalties) : ''}</span>
         </div>
         <div className={awayWon ? 'bk-row winner' : 'bk-row'}>
           <TeamLabel name={match.away_team} side="home" />
-          <span className="bk-score">{done ? as : ''}</span>
+          <span className="bk-score">{done ? sideScore(as, match.away_penalties) : ''}</span>
         </div>
         {!compact && (
           <div className="bk-meta">

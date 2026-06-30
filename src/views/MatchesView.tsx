@@ -2,7 +2,7 @@ import { useEffect, useState, type FormEvent } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
 import { KNOCKOUT_BRACKET } from '../../shared/bracket';
-import { resolveGroupSlots } from '../../shared/groupTables';
+import { resolveBracketSlots } from '../../shared/groupTables';
 import { api } from '../api';
 import { formatKickoff, formatDayLabel, groupByDay } from '../format';
 import { MatchAdminRow } from '../components/MatchAdminRow';
@@ -103,8 +103,8 @@ export function MatchesView({ onOpenMatch, isAdmin, viewerParticipantId }: Props
     })
     .filter((x) => x.slots.length > 0);
 
-  // Equipos ya decididos por los grupos (para mostrarlos en los cupos "por definir").
-  const resolvedSlots = resolveGroupSlots(matches);
+  // Equipos ya decididos (grupos o ganadores de cruces) para los cupos "por definir".
+  const resolvedSlots = resolveBracketSlots(matches);
 
   return (
     <div className="stack">

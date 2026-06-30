@@ -23,6 +23,18 @@ export function asHandicap(value: unknown): number | null {
   return num;
 }
 
+// Penaltis (tanda): entero 0-99, o null si no hubo / no se envió.
+export function asPenalty(value: unknown): number | null {
+  if (value === undefined || value === null || value === '') {
+    return null;
+  }
+  const num = typeof value === 'number' ? value : Number(value);
+  if (!Number.isInteger(num) || num < 0 || num > 99) {
+    return null;
+  }
+  return num;
+}
+
 export function asId(value: unknown): number | null {
   const num = Number(value);
   if (!Number.isInteger(num) || num <= 0) {
