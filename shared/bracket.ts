@@ -55,3 +55,40 @@ export const KNOCKOUT_BRACKET: BracketSlot[] = [
   { matchNumber: 103, stage: 'tercer_puesto', home: 'Pierde P101', away: 'Pierde P102', kickoff: '2026-07-18T16:00', venue: 'Hard Rock Stadium, Miami' },
   { matchNumber: 104, stage: 'final', home: 'Gana P101', away: 'Gana P102', kickoff: '2026-07-19T14:00', venue: 'MetLife Stadium, Nueva York' },
 ];
+
+// Orden vertical de cada cruce dentro del cuadro: recorrido in-order del árbol desde la
+// final, para que cada partido quede entre sus dos alimentadores (Gana P##). Sin esto, las
+// columnas salían en el orden del arreglo y un octavo caía junto a 16avos que no lo alimentan.
+function computeBracketOrder(): number[] {
+  const byNum = new Map(KNOCKOUT_BRACKET.map((s) => [s.matchNumber, s]));
+  const childrenOf = (n: number): number[] => {
+    const slot = byNum.get(n);
+    if (!slot) {
+      return [];
+    }
+    const kids: number[] = [];
+    for (const side of [slot.home, slot.away]) {
+      const m = side.match(/Gana P(\d+)/);
+      if (m) {
+        kids.push(Number(m[1]));
+      }
+    }
+    return kids;
+  };
+  const inorder = (n: number): number[] => {
+    const kids = childrenOf(n);
+    if (kids.length < 2) {
+      return [n];
+    }
+    return [...inorder(kids[0]), n, ...inorder(kids[1])];
+  };
+  const finalSlot = KNOCKOUT_BRACKET.find((s) => s.stage === 'final');
+  return finalSlot ? inorder(finalSlot.matchNumber) : KNOCKOUT_BRACKET.map((s) => s.matchNumber);
+}
+
+const BRACKET_RANK = new Map(computeBracketOrder().map((n, i) => [n, i]));
+
+// Posición (de arriba a abajo) de un cruce en su columna del cuadro.
+export function bracketRank(matchNumber: number): number {
+  return BRACKET_RANK.get(matchNumber) ?? matchNumber;
+}

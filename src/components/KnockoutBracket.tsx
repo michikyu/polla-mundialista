@@ -1,7 +1,7 @@
 import type { ReactNode } from 'react';
 import type { Match, MatchStage } from '../../shared/types';
 import { STAGE_LABELS, STAGE_ORDER } from '../../shared/types';
-import { KNOCKOUT_BRACKET, type BracketSlot } from '../../shared/bracket';
+import { KNOCKOUT_BRACKET, bracketRank, type BracketSlot } from '../../shared/bracket';
 import { resolveGroupSlots } from '../../shared/groupTables';
 import { formatKickoff, STATUS_ICONS, STATUS_LABELS } from '../format';
 import { TeamLabel } from './TeamLabel';
@@ -199,7 +199,9 @@ export function KnockoutBracket({
       return real.map((m) => matchCard(m, compact));
     }
 
-    const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === stage);
+    const slots = KNOCKOUT_BRACKET.filter((s) => s.stage === stage).sort(
+      (a, b) => bracketRank(a.matchNumber) - bracketRank(b.matchNumber),
+    );
     if (slots.length === 0) {
       return real.map((m) => matchCard(m, compact));
     }
