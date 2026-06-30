@@ -223,10 +223,14 @@ export async function syncFromFootballData(): Promise<SyncCounts> {
     if (!home || !away) {
       continue;
     }
-    const homeScore = apiMatch.score.fullTime.home;
-    const awayScore = apiMatch.score.fullTime.away;
+    const rawHome = apiMatch.score.fullTime.home;
+    const rawAway = apiMatch.score.fullTime.away;
     const homePens = apiMatch.score.penalties?.home ?? null;
     const awayPens = apiMatch.score.penalties?.away ?? null;
+    // football-data suma los penaltis al marcador de fullTime; los goles del partido
+    // (90' + prórroga) son fullTime menos la tanda. Así se ve "1 (3)" y no "4 (3)".
+    const homeScore = rawHome !== null && homePens !== null ? rawHome - homePens : rawHome;
+    const awayScore = rawAway !== null && awayPens !== null ? rawAway - awayPens : rawAway;
     const finished = apiMatch.status === 'FINISHED' && homeScore !== null && awayScore !== null;
     if (finished) {
       checked += 1;
