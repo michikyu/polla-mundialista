@@ -1650,8 +1650,7 @@ select:focus {
 /* Cada partido ocupa un "casillero" de igual alto y va centrado en él. Así cada cruce
    queda a la mitad de sus dos alimentadores, sin importar el alto del contenido. */
 .bk-slot {
-  flex: 1 1 0;
-  min-height: 0;
+  flex: 1 0 auto;
   display: flex;
   align-items: center;
 }
