@@ -34,11 +34,11 @@ export function TeamLabel({ name, side, full = false }: Props) {
     <span className="team" title={name}>
       {side === 'home' ? (
         <>
-          <Flag alpha2={team.alpha2} /> {label}
+          <Flag alpha2={team.alpha2} /> <span className="team-name">{label}</span>
         </>
       ) : (
         <>
-          {label} <Flag alpha2={team.alpha2} />
+          <span className="team-name">{label}</span> <Flag alpha2={team.alpha2} />
         </>
       )}
     </span>

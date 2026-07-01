@@ -264,7 +264,13 @@ export function KnockoutBracket({
         {treeStages.map((stage) => (
           <div key={stage} className="bk-tree-col">
             <div className="bk-tree-col-title">{SHORT_LABELS[stage]}</div>
-            <div className="bk-tree-col-body">{cardsFor(stage, true)}</div>
+            <div className="bk-tree-col-body">
+              {cardsFor(stage, true).map((card, i) => (
+                <div className="bk-slot" key={i}>
+                  {card}
+                </div>
+              ))}
+            </div>
           </div>
         ))}
       </div>
